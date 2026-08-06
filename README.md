@@ -4,6 +4,11 @@ A production-ready AI chatbot that answers questions from uploaded university no
 
 > Users chat in English, Bangla, or Banglish; the assistant streams answers token-by-token and cites the exact notice documents it used.
 
+### Live deployments
+
+- **Frontend:** https://departmental-ai-chatbot-dkpf.vercel.app
+- **Backend API:** https://departmental-ai-chatbot-tzpe.vercel.app (health: `https://departmental-ai-chatbot-tzpe.vercel.app/api/v1/health`)
+
 ---
 
 ## Table of Contents
@@ -180,9 +185,9 @@ Ai-Chatbot/
 |---|---|---|
 | `PORT` | `3000` | API port |
 | `NODE_ENV` | `development` | `production` enables prod behavior |
-| `APP_BASE_URL` | `http://localhost:3000` | Public base URL of the API |
+| `APP_BASE_URL` | `https://departmental-ai-chatbot-dkpf.vercel.app` | Public frontend URL — used for password-reset links and the OpenRouter referrer. Local dev: `http://localhost:5173` |
 | `APP_TITLE` | `AI Chatbot` | App name shown in emails |
-| `CORS_ORIGIN` | `*` | Comma-separated allowed origins (any `localhost` port is always allowed) |
+| `CORS_ORIGIN` | — | Comma-separated allowed origins: `https://departmental-ai-chatbot-dkpf.vercel.app,http://localhost:5173` (any `localhost` port is always allowed) |
 | `DB_NAME` | `ChatBot_DB` | MongoDB database name |
 | `MONGO_URI` | — | **Required.** MongoDB connection string |
 | `VECTOR_INDEX_NAME` | `notice_vector_index` | Atlas Search vector index name |
@@ -205,9 +210,9 @@ Ai-Chatbot/
 
 | Variable | Default | Description |
 |---|---|---|
-| `VITE_API_BASE_URL` | — | Backend base URL, e.g. `http://localhost:3000` or `https://your-api.railway.app` |
+| `VITE_API_BASE_URL` | `https://departmental-ai-chatbot-tzpe.vercel.app` | Backend base URL. Local dev: `http://localhost:3000` |
 
-> **Note:** only `VITE_API_BASE_URL` is required for the frontend; never put secrets in a `VITE_` variable.
+> **Note:** only `VITE_API_BASE_URL` is required for the frontend; never put secrets in a `VITE_` variable. It is a **build-time** variable — after changing it in the Vercel dashboard you must redeploy.
 
 ---
 
@@ -294,6 +299,8 @@ MongoDB collections (Mongoose models in `src/database/models/`):
 ## API Reference
 
 All endpoints are prefixed with `/api/v1`. Protected routes require `Authorization: Bearer <access_token>` (the frontend refreshes automatically).
+
+Live API base: `https://departmental-ai-chatbot-tzpe.vercel.app` — local: `http://localhost:3000`.
 
 ### Health
 | Method | Path | Description |
@@ -385,6 +392,11 @@ SSE event types: `start` · `chunk` (partial text) · `citations` (sources) · `
 ---
 
 ## Deployment
+
+Current live deployments:
+
+- Frontend: **https://departmental-ai-chatbot-dkpf.vercel.app**
+- Backend: **https://departmental-ai-chatbot-tzpe.vercel.app**
 
 The repository is a single repo containing both apps. Each app deploys as its own Vercel (or Railway) project using **Root Directory** pointing at its folder.
 
