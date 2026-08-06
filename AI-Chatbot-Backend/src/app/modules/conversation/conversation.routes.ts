@@ -11,12 +11,14 @@ import messageRouter from '../message/message.routes';
 
 const router = Router();
 
+// Public: shared conversation page (no auth).
+router.get('/share/:token', conversationController.shared);
+
 router.use(authenticate);
 
 router.get('/', validate(listConversationsSchema, 'query'), conversationController.list);
 router.post('/', validate(createConversationSchema), conversationController.create);
 router.delete('/clear-all', conversationController.clearAll);
-router.get('/share/:token', conversationController.shared);
 
 router.get('/:id', conversationController.getById);
 router.patch('/:id', validate(updateConversationSchema), conversationController.update);
