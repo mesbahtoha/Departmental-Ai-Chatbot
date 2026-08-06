@@ -393,9 +393,9 @@ The repository is a single repo containing both apps. Each app deploys as its ow
 2. Framework preset **Other**, build command `npm run vercel-build`, install command `npm install` (defaults are fine).
 3. Set the environment variables from [Environment Variables](#environment-variables) — especially `MONGO_URI`, `OPENROUTER_API_KEY`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `CORS_ORIGIN` (your frontend URL).
 4. The API is served by the serverless function in `api/index.ts` (the Express app without `app.listen`). `vercel.json` configures it with:
-   - `maxDuration: 300` — AI responses stream over SSE and can exceed the 10 s default.
-   - `supportsResponseStreaming: true` — required for SSE streaming.
+   - `maxDuration: 60` — AI responses stream over SSE and can exceed the 10 s default (Pro plans may raise this to 300).
    - `regions: ["iad1"]` — a single region so in-memory rate-limiters and the model's streams stay consistent.
+   - Streaming needs no extra flag — Vercel enables response streaming for Node.js functions by default.
 5. Database connection: `src/config/db.ts` is serverless-safe (reuses the connection per warm instance, builds indexes and seeds the admin account on first connect).
 6. Limitations to know: Vercel caps request bodies at ~4.5 MB, so very large notice uploads should be handled off-platform; SMTP is only used for password reset emails.
 
