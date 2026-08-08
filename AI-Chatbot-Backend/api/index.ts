@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'http';
 import { createApp } from '../src/app';
 import { connectDatabase, runBootJobs } from '../src/config/db';
-import { log, logger } from '../src/config/logger';
+import { logger } from '../src/config/logger';
 import { MongoLogTransport } from '../src/config/logger-mongo';
 
 const app = createApp();
@@ -23,12 +23,9 @@ function ensureDatabase(): Promise<unknown> {
 }
 
 export default async function handler(req: IncomingMessage, res: ServerResponse): Promise<void> {
-  const isRoot = (req.url || '').replace(/\?.*$/, '') === '/';
-  if (isRoot) log.info('TRACE root: handler start');
   try {
     await ensureDatabase();
     registerMongoLogs();
-    if (isRoot) log.info('TRACE root: db connected');
     // Indexes + seeding run detached so cold starts never block requests.
     runBootJobs();
   } catch (error) {
@@ -38,6 +35,5 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     res.end(JSON.stringify({ success: false, message }));
     return;
   }
-  if (isRoot) log.info('TRACE root: dispatching to express');
   app(req, res);
 }

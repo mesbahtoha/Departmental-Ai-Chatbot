@@ -10,7 +10,6 @@ import { normalizeText } from '../../../utils/text.utils';
 import { ChatLogModel } from '../../../database/models/ChatLog.model';
 import env from '../../../config/env';
 import { listRoutes } from './legacy.routes';
-import { log } from '../../../config/logger';
 
 /**
  * Legacy controllers - preserve the exact response contracts of the
@@ -18,7 +17,6 @@ import { log } from '../../../config/logger';
  */
 export const legacyController = {
   home: (_req: Request, res: Response) => {
-    log.info('TRACE root: home handler reached');
     res.send('🚀 Server is running...');
   },
 
