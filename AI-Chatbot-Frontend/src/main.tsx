@@ -4,8 +4,6 @@ import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import App from './App';
 import { initTheme } from '@/lib/theme';
-import 'highlight.js/styles/github-dark.css';
-import 'katex/dist/katex.min.css';
 import './index.css';
 
 initTheme();

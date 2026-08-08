@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import {
   MdAdd,
@@ -29,10 +29,21 @@ export function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [theme, setTheme] = useState(getStoredTheme());
 
+  // Lock body scroll + close on Escape while the mobile drawer is open.
+  useEffect(() => {
+    document.body.classList.toggle('drawer-open', sidebarOpen);
+    if (!sidebarOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSidebarOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [sidebarOpen]);
+
   const handleNewChat = async () => {
     const conversation = await createConversation('New chat');
-    navigate(`/chat/${conversation._id}`);
     setSidebarOpen(false);
+    navigate(`/chat/${conversation._id}`);
   };
 
   const handleClearAll = async () => {
@@ -54,16 +65,16 @@ export function AppShell() {
   const sidebar = (
     <aside
       style={{
-        width: 272,
+        width: '100%',
         background: 'var(--bg-sidebar)',
-        borderRight: '1px solid var(--border-color)',
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
+        minHeight: 0,
       }}
     >
       <div style={{ padding: 14 }}>
-        <Button className="w-full" onClick={handleNewChat}>
+        <Button className="w-full" onClick={() => void handleNewChat()}>
           <MdAdd size={18} /> New chat
         </Button>
       </div>
@@ -76,7 +87,7 @@ export function AppShell() {
         />
       </div>
 
-      <div className="flex-1 overflow-y-auto scroll-thin" style={{ padding: '0 8px 8px' }}>
+      <div className="flex-1 overflow-y-auto scroll-thin" style={{ padding: '0 8px 8px', minHeight: 0 }}>
         {conversations.length === 0 ? (
           <p className="text-sm text-muted text-center" style={{ padding: 20 }}>
             No conversations yet.
@@ -85,7 +96,7 @@ export function AppShell() {
           conversations.map((conversation) => (
             <div
               key={conversation._id}
-              className="flex items-center justify-between rounded"
+              className="flex items-center justify-between rounded conversation-item"
               style={{
                 padding: '9px 10px',
                 cursor: 'pointer',
@@ -182,27 +193,28 @@ export function AppShell() {
 
   return (
     <div className="flex app-height" style={{ overflow: 'hidden' }}>
-      <div style={{ display: 'none', height: '100%' }} className="sidebar-desktop">
+      {/* Desktop sidebar (>= 1024px) */}
+      <div style={{ display: 'none', height: '100%', width: 272, flexShrink: 0 }} className="sidebar-desktop">
         {sidebar}
       </div>
 
+      {/* Mobile drawer: slides in from the left with overlay */}
       {sidebarOpen && (
-        <div
-          className="modal-overlay"
-          style={{ zIndex: 900 }}
-          onClick={() => setSidebarOpen(false)}
-        >
-          <div onClick={(e) => e.stopPropagation()} style={{ height: '100%', background: 'var(--bg-sidebar)' }}>
-            <div className="flex justify-end" style={{ padding: 8 }}>
-              <button className="btn btn-ghost btn-icon" onClick={() => setSidebarOpen(false)}>
-                <MdClose size={18} />
+        <>
+          <div className="drawer-overlay" onClick={() => setSidebarOpen(false)} />
+          <div className="drawer" role="dialog" aria-modal="true" aria-label="Conversation menu">
+            <div className="drawer-head">
+              <span className="font-semibold" style={{ fontSize: 15 }}>NoticeFlow</span>
+              <button className="btn btn-ghost btn-icon" onClick={() => setSidebarOpen(false)} aria-label="Close menu">
+                <MdClose size={20} />
               </button>
             </div>
             {sidebar}
           </div>
-        </div>
+        </>
       )}
 
+      {/* Main column: topbar + chat content */}
       <div className="flex flex-col flex-1" style={{ minWidth: 0 }}>
         <div
           className="flex items-center justify-between"
@@ -215,29 +227,29 @@ export function AppShell() {
             flexShrink: 0,
           }}
         >
-          <div className="flex items-center gap-2">
-            <button className="btn btn-ghost btn-icon sidebar-toggle" onClick={() => setSidebarOpen(true)}>
+          <div className="flex items-center gap-2" style={{ minWidth: 0 }}>
+            <button className="btn btn-ghost btn-icon sidebar-toggle" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
               <MdMenu size={20} />
             </button>
-            <span className="font-semibold" style={{ fontSize: 15 }}>
+            <span className="font-semibold ellipsis" style={{ fontSize: 15 }}>
               NoticeFlow
             </span>
           </div>
           <button
             className="btn btn-ghost btn-sm"
-            style={{ color: 'var(--text-muted)' }}
+            style={{ color: 'var(--text-muted)', flexShrink: 0 }}
             onClick={() => void handleClearAll()}
           >
             <MdDelete size={15} /> Clear all
           </button>
         </div>
-        <div className="flex-1" style={{ minHeight: 0, position: 'relative', overflow: 'hidden', background: 'var(--bg-chat)' }}>
+        <div className="flex-1 route-fade" style={{ minHeight: 0, position: 'relative', overflow: 'hidden', background: 'var(--bg-chat)' }}>
           <Outlet />
         </div>
       </div>
 
       <style>{`
-        @media (min-width: 900px) {
+        @media (min-width: 1024px) {
           .sidebar-desktop { display: block !important; }
           .sidebar-toggle { display: none; }
         }

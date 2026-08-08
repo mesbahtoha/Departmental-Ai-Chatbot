@@ -129,12 +129,12 @@ export const adminService = {
     const user = await userRepository.findById(userId);
     if (!user) return false;
 
-    // Cascade: conversations + messages first, then the user.
-    const conversations = await conversationRepository.listByUser(userId, { limit: 100 });
-    for (const conversation of conversations.items) {
-      await messageRepository.deleteByConversation(conversation._id);
-      await conversationRepository.delete(conversation._id);
-    }
+    // Cascade: bulk-delete all of the user's data, then the user record.
+    await Promise.all([
+      messageRepository.deleteManyByUser(userId),
+      conversationRepository.deleteManyByUser(userId),
+      ChatLogModel.deleteMany({ userId }),
+    ]);
     await userRepository.delete(userId);
     return true;
   },

@@ -16,7 +16,7 @@ import {
   MdMenu,
   MdClose,
 } from 'react-icons/md';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/auth.store';
 import { getStoredTheme, toggleTheme } from '@/lib/theme';
 import { Avatar } from '@/components/ui/Avatar';
@@ -41,6 +41,17 @@ export function AdminLayout() {
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState(getStoredTheme());
 
+  // Lock body scroll + close on Escape while the mobile drawer is open.
+  useEffect(() => {
+    document.body.classList.toggle('drawer-open', open);
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
+
   const handleLogout = async () => {
     await logout();
     navigate('/');
@@ -49,16 +60,15 @@ export function AdminLayout() {
   const sidebar = (
     <aside
       style={{
-        width: 236,
+        width: '100%',
         background: 'var(--bg-sidebar)',
-        borderRight: '1px solid var(--border-color)',
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
-        flexShrink: 0,
+        minHeight: 0,
       }}
     >
-      <div className="flex items-center gap-2" style={{ padding: '16px 18px', borderBottom: '1px solid var(--border-color)' }}>
+      <div className="flex items-center gap-2" style={{ padding: '16px 18px', borderBottom: '1px solid var(--border-color)', flexShrink: 0 }}>
         <span style={{ color: 'var(--color-primary)', fontSize: 22 }}><MdChat /></span>
         <div>
           <div className="font-bold" style={{ fontSize: 15 }}>NoticeFlow</div>
@@ -66,7 +76,7 @@ export function AdminLayout() {
         </div>
       </div>
 
-      <nav className="flex-1 overflow-y-auto" style={{ padding: '10px 8px' }}>
+      <nav className="flex-1 overflow-y-auto scroll-thin" style={{ padding: '10px 8px', minHeight: 0 }}>
         {NAV_ITEMS.map((item) => (
           <NavLink
             key={item.to}
@@ -76,12 +86,13 @@ export function AdminLayout() {
               `flex items-center gap-3 rounded ${isActive ? 'font-semibold' : ''}`
             }
             style={({ isActive }) => ({
-              padding: '9px 12px',
+              padding: '11px 12px',
               fontSize: 14,
               color: isActive ? 'var(--color-primary)' : 'var(--text-secondary)',
               background: isActive ? 'var(--bg-active)' : 'transparent',
               marginBottom: 2,
             })}
+            onClick={() => setOpen(false)}
           >
             <item.icon size={17} />
             {item.label}
@@ -89,17 +100,18 @@ export function AdminLayout() {
         ))}
       </nav>
 
-      <div style={{ padding: 12, borderTop: '1px solid var(--border-color)' }}>
+      <div style={{ padding: 12, borderTop: '1px solid var(--border-color)', flexShrink: 0 }}>
         <NavLink
           to="/chat"
           className="flex items-center gap-2"
           style={{ padding: '8px 10px', fontSize: 13.5, color: 'var(--text-secondary)', borderRadius: 8 }}
+          onClick={() => setOpen(false)}
         >
           <MdChat size={16} /> Back to chat app
         </NavLink>
       </div>
 
-      <div className="flex items-center gap-2" style={{ padding: 12, borderTop: '1px solid var(--border-color)' }}>
+      <div className="flex items-center gap-2" style={{ padding: 12, borderTop: '1px solid var(--border-color)', flexShrink: 0 }}>
         <Avatar name={user?.name} size="sm" />
         <div className="flex-1" style={{ minWidth: 0 }}>
           <div className="text-sm font-semibold ellipsis">{user?.name}</div>
@@ -117,21 +129,25 @@ export function AdminLayout() {
 
   return (
     <div className="flex app-height" style={{ overflow: 'hidden' }}>
-      <div style={{ display: 'none', height: '100%' }} className="admin-sidebar-desktop">
+      {/* Desktop sidebar (>= 1024px) */}
+      <div style={{ display: 'none', height: '100%', width: 236, flexShrink: 0 }} className="admin-sidebar-desktop">
         {sidebar}
       </div>
 
+      {/* Mobile drawer: slides in from the left with overlay */}
       {open && (
-        <div className="modal-overlay" style={{ zIndex: 900 }} onClick={() => setOpen(false)}>
-          <div onClick={(e) => e.stopPropagation()} style={{ height: '100%' }}>
-            <div className="flex justify-end" style={{ padding: 8 }}>
-              <button className="btn btn-ghost btn-icon" onClick={() => setOpen(false)}>
-                <MdClose size={18} />
+        <>
+          <div className="drawer-overlay" onClick={() => setOpen(false)} />
+          <div className="drawer" role="dialog" aria-modal="true" aria-label="Admin menu">
+            <div className="drawer-head">
+              <span className="font-semibold" style={{ fontSize: 15 }}>Admin</span>
+              <button className="btn btn-ghost btn-icon" onClick={() => setOpen(false)} aria-label="Close menu">
+                <MdClose size={20} />
               </button>
             </div>
             {sidebar}
           </div>
-        </div>
+        </>
       )}
 
       <div className="flex flex-col flex-1" style={{ minWidth: 0 }}>
@@ -146,19 +162,19 @@ export function AdminLayout() {
           }}
         >
           <div className="flex items-center gap-2">
-            <button className="btn btn-ghost btn-icon admin-sidebar-toggle" onClick={() => setOpen(true)}>
+            <button className="btn btn-ghost btn-icon admin-sidebar-toggle" onClick={() => setOpen(true)} aria-label="Open menu">
               <MdMenu size={20} />
             </button>
             <span className="font-semibold" style={{ fontSize: 15 }}>Admin</span>
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto" style={{ background: 'var(--bg-body)', padding: 24 }}>
+        <div className="flex-1 overflow-y-auto admin-content route-fade">
           <Outlet />
         </div>
       </div>
 
       <style>{`
-        @media (min-width: 900px) {
+        @media (min-width: 1024px) {
           .admin-sidebar-desktop { display: block !important; }
           .admin-sidebar-toggle { display: none; }
         }

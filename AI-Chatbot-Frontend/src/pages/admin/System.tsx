@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { FaDatabase, FaMemory, FaMicrochip, FaServer } from 'react-icons/fa';
 import { apiGet } from '@/lib/api';
 import { Badge } from '@/components/ui/Badge';
-import { FullPageSpinner } from '@/components/ui/Spinner';
+import { StatGridSkeleton } from '@/components/ui/Skeleton';
 import { StatCard } from '@/components/ui/StatCard';
 import { formatDuration } from '@/lib/format';
 
@@ -39,7 +39,21 @@ export function AdminSystem() {
       .catch(() => setData(null));
   }, []);
 
-  if (!data) return <FullPageSpinner label="Loading system info…" />;
+  if (!data) {
+    return (
+      <div>
+        <div className="page-header">
+          <div className="page-header-title">
+            <h2>System information</h2>
+            <p className="text-sm text-muted" style={{ marginTop: 0 }}>
+              Live status of the backend server
+            </p>
+          </div>
+        </div>
+        <StatGridSkeleton cards={4} />
+      </div>
+    );
+  }
 
   const memoryPct = data.totalMemoryMb
     ? Math.round(((data.totalMemoryMb - data.freeMemoryMb) / data.totalMemoryMb) * 100)
@@ -47,10 +61,14 @@ export function AdminSystem() {
 
   return (
     <div>
-      <h2 style={{ fontSize: 20, marginBottom: 2 }}>System information</h2>
-      <p className="text-sm text-muted" style={{ marginTop: 0 }}>
-        Live status of the backend server
-      </p>
+      <div className="page-header">
+        <div className="page-header-title">
+          <h2>System information</h2>
+          <p className="text-sm text-muted" style={{ marginTop: 0 }}>
+            Live status of the backend server
+          </p>
+        </div>
+      </div>
 
       <div className="grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginTop: 8 }}>
         <StatCard

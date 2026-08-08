@@ -5,7 +5,7 @@ import { apiGet, getErrorMessage } from '@/lib/api';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Pagination } from '@/components/ui/Pagination';
-import { FullPageSpinner } from '@/components/ui/Spinner';
+import { TableSkeleton } from '@/components/ui/Skeleton';
 import { Input } from '@/components/ui/Form';
 import { formatDateTime, truncate } from '@/lib/format';
 import type { MessageFeedback } from '@/types';
@@ -54,27 +54,27 @@ export function AdminChats() {
 
   return (
     <div>
-      <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
-        <div>
-          <h2 style={{ fontSize: 20, marginBottom: 2 }}>Chat history</h2>
+      <div className="page-header">
+        <div className="page-header-title">
+          <h2>Chat history</h2>
           <span className="text-sm text-muted">{total} messages logged</span>
         </div>
-        <Input
-          placeholder="Search messages…"
-          style={{ width: 260 }}
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(1);
-          }}
-        />
+        <div className="page-header-actions">
+          <Input
+            placeholder="Search messages…"
+            style={{ width: 260 }}
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+          />
+        </div>
       </div>
 
       <div className="card">
         {loading ? (
-          <div style={{ padding: 40 }}>
-            <FullPageSpinner label="Loading chats…" />
-          </div>
+          <TableSkeleton rows={8} />
         ) : rows.length === 0 ? (
           <EmptyState icon={<FaComments />} title="No messages found" description="Messages will appear here as users chat." />
         ) : (

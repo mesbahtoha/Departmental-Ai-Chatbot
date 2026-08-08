@@ -10,7 +10,7 @@ import { ChatComposer } from '@/components/chat/ChatComposer';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Form';
-import { FullPageSpinner } from '@/components/ui/Spinner';
+import { ChatSkeleton } from '@/components/ui/Skeleton';
 import { apiPost } from '@/lib/api';
 import { API_BASE_URL } from '@/lib/api';
 
@@ -103,7 +103,7 @@ export function ChatPage() {
   }, [current?.messages.length, current?.messages[current?.messages.length - 1]?.content]);
 
   if (loading || !current || current.conversation._id !== id) {
-    return <FullPageSpinner label="Loading conversation…" />;
+    return <ChatSkeleton />;
   }
 
   const conversation = current.conversation;
@@ -162,8 +162,8 @@ export function ChatPage() {
   return (
     <div className="flex flex-col" style={{ position: 'absolute', inset: 0 }}>
       <div
-        className="flex items-center justify-between"
-        style={{ padding: '10px 20px', borderBottom: '1px solid var(--border-color)', flexShrink: 0 }}
+        className="flex items-center justify-between chat-header-row"
+        style={{ borderBottom: '1px solid var(--border-color)', flexShrink: 0, gap: 8 }}
       >
         <div className="flex items-center gap-2" style={{ minWidth: 0 }}>
           {conversation.pinned && <MdPushPin size={15} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />}
@@ -171,23 +171,23 @@ export function ChatPage() {
             {conversation.title || 'Untitled chat'}
           </span>
         </div>
-        <div className="flex items-center" style={{ gap: 4 }}>
-          <Button size="sm" variant="ghost" onClick={() => { setRenameValue(conversation.title); setRenameOpen(true); }}>
-            <MdEdit size={15} /> Rename
+        <div className="flex items-center" style={{ gap: 2, flexShrink: 0 }}>
+          <Button size="sm" variant="ghost" className="chat-action" onClick={() => { setRenameValue(conversation.title); setRenameOpen(true); }} title="Rename">
+            <MdEdit size={15} /> <span className="chat-action-label">Rename</span>
           </Button>
-          <Button size="sm" variant="ghost" onClick={() => void handleShare()}>
-            <MdLink size={15} /> Share
+          <Button size="sm" variant="ghost" className="chat-action" onClick={() => void handleShare()} title="Share">
+            <MdLink size={15} /> <span className="chat-action-label">Share</span>
           </Button>
-          <Button size="sm" variant="ghost" onClick={() => void handleExport('markdown')}>
-            <MdDownload size={15} /> Export
+          <Button size="sm" variant="ghost" className="chat-action" onClick={() => void handleExport('markdown')} title="Export">
+            <MdDownload size={15} /> <span className="chat-action-label">Export</span>
           </Button>
-          <Button size="sm" variant="ghost" onClick={() => void handleDelete()} title="Delete">
+          <Button size="sm" variant="ghost" className="chat-action" onClick={() => void handleDelete()} title="Delete">
             <MdDelete size={15} />
           </Button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto scroll-thin" style={{ minHeight: 0, padding: '0 20px' }}>
+      <div className="flex-1 overflow-y-auto scroll-thin chat-scroll" style={{ minHeight: 0 }}>
         <div style={{ maxWidth: 860, margin: '0 auto' }}>
           {messages.length === 0 ? (
             <EmptyChatHero />

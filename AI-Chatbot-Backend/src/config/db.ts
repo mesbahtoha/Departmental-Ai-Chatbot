@@ -5,6 +5,7 @@ import { ensureIndexes } from '../database/indexes';
 import { seedDatabase } from '../database/seeders';
 
 let isConnected = false;
+let bootJobsDone = false;
 
 /**
  * Establishes the MongoDB connection using Mongoose.
@@ -41,8 +42,13 @@ export async function connectDatabase(): Promise<typeof mongoose> {
 
   isConnected = true;
 
-  await ensureIndexes();
-  await seedDatabase();
+  // Index creation + seeding run once per process instance (not on every
+  // reconnect) so serverless cold starts stay fast.
+  if (!bootJobsDone) {
+    await ensureIndexes();
+    await seedDatabase();
+    bootJobsDone = true;
+  }
 
   await mongoose.connection.db?.command({ ping: 1 });
 

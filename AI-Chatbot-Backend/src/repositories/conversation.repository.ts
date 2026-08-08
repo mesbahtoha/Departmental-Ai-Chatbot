@@ -68,8 +68,9 @@ export const conversationRepository = {
     await ConversationModel.deleteOne({ _id: id });
   },
 
-  async deleteManyByUser(userId: string | Types.ObjectId): Promise<void> {
-    await ConversationModel.deleteMany({ userId });
+  async deleteManyByUser(userId: string | Types.ObjectId): Promise<number> {
+    const result = await ConversationModel.deleteMany({ userId });
+    return result.deletedCount ?? 0;
   },
 
   async touchLastMessage(id: string | Types.ObjectId, increment = 1): Promise<void> {

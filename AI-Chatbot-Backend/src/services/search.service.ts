@@ -171,6 +171,22 @@ export async function searchNotices(
     });
   }
 
+  // Batch-load notice docs for chunks that didn't match at the doc level
+  // (avoids an N+1 findById per chunk).
+  const missingDocIds = chunks
+    .map((chunk) => String(chunk.documentId ?? ''))
+    .filter((docId) => docId && !docMap.has(docId))
+    .map((docId) => safeObjectId(docId))
+    .filter((id): id is Exclude<ReturnType<typeof safeObjectId>, null> => Boolean(id));
+
+  const missingDocMap = new Map<string, Record<string, unknown>>();
+  if (missingDocIds.length) {
+    const notices = await noticeRepository.findByIdsFull(missingDocIds);
+    for (const notice of notices) {
+      missingDocMap.set(String(notice._id), notice);
+    }
+  }
+
   for (const chunk of chunks) {
     const docId = String(chunk.documentId);
     const existing = docMap.get(docId);
@@ -182,21 +198,21 @@ export async function searchNotices(
         existing.preview = (chunk.preview as string) || existing.preview;
       }
     } else {
-      const doc = await noticeRepository.findById(chunk.documentId);
+      const doc = missingDocMap.get(docId);
       if (doc) {
         docMap.set(docId, {
           _id: doc._id,
-          title: doc.title,
-          category: doc.category,
-          type: doc.type,
+          title: (doc.title as string) || '',
+          category: (doc.category as string) || 'general',
+          type: (doc.type as string) || 'text',
           fileId: doc.fileId ?? null,
-          mimeType: doc.mimeType,
-          preview: (chunk.preview as string) || doc.summary || buildPreview(doc.rawText || ''),
-          summary: doc.summary || buildPreview(doc.rawText || ''),
+          mimeType: (doc.mimeType as string) || 'text/plain',
+          preview: (chunk.preview as string) || (doc.summary as string) || buildPreview(doc.rawText || ''),
+          summary: (doc.summary as string) || buildPreview(doc.rawText || ''),
           matchedChunk: (chunk.chunkText as string) || null,
           relevanceScore: (chunk.relevanceScore as number) || 0,
           searchMode: 'chunk-match',
-          createdAt: doc.createdAt,
+          createdAt: doc.createdAt as Date,
           hasFullText: Boolean(doc.rawText),
           fileUrl: doc.fileId ? `/api/files/${doc.fileId}` : null,
           fullNoticeUrl: `/api/student/notices/${doc._id}/full`,

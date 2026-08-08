@@ -13,7 +13,7 @@ export function LandingPage() {
       <ChatPreview />
       <FeatureGrid />
 
-      <section className="container text-center" aria-labelledby="landing-cta-title" style={{ padding: '56px 24px 96px' }}>
+      <section className="container text-center landing-cta-section" aria-labelledby="landing-cta-title">
         <h2 id="landing-cta-title" style={{ fontSize: 26, marginBottom: 10 }}>
           Ready to try it?
         </h2>

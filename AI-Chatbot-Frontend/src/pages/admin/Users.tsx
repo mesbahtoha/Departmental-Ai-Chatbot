@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Pagination } from '@/components/ui/Pagination';
-import { FullPageSpinner } from '@/components/ui/Spinner';
+import { TableSkeleton } from '@/components/ui/Skeleton';
 import { Input } from '@/components/ui/Form';
 import { formatDateTime } from '@/lib/format';
 
@@ -85,27 +85,27 @@ export function AdminUsers() {
 
   return (
     <div>
-      <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
-        <div>
-          <h2 style={{ fontSize: 20, marginBottom: 2 }}>Users</h2>
+      <div className="page-header">
+        <div className="page-header-title">
+          <h2>Users</h2>
           <span className="text-sm text-muted">{total} total users</span>
         </div>
-        <Input
-          placeholder="Search name or email…"
-          style={{ width: 260 }}
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(1);
-          }}
-        />
+        <div className="page-header-actions">
+          <Input
+            placeholder="Search name or email…"
+            style={{ width: 260 }}
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+          />
+        </div>
       </div>
 
       <div className="card">
         {loading ? (
-          <div style={{ padding: 40 }}>
-            <FullPageSpinner label="Loading users…" />
-          </div>
+          <TableSkeleton rows={8} />
         ) : users.length === 0 ? (
           <EmptyState icon={<FaUserCog />} title="No users found" description="Try a different search." />
         ) : (

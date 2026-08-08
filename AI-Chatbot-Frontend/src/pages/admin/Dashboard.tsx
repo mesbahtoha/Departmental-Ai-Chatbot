@@ -4,7 +4,7 @@ import { FaComments, FaEnvelopeOpenText, FaUsers } from 'react-icons/fa';
 import { MdChat, MdStickyNote2, MdToken } from 'react-icons/md';
 import { apiGet } from '@/lib/api';
 import { StatCard } from '@/components/ui/StatCard';
-import { FullPageSpinner } from '@/components/ui/Spinner';
+import { StatGridSkeleton } from '@/components/ui/Skeleton';
 import { formatTokens } from '@/lib/format';
 
 interface DashboardData {
@@ -30,14 +30,32 @@ export function AdminDashboard() {
       .catch(() => setStats(null));
   }, []);
 
-  if (!stats) return <FullPageSpinner label="Loading dashboard…" />;
+  if (!stats) {
+    return (
+      <div>
+        <div className="page-header">
+          <div className="page-header-title">
+            <h2>Dashboard</h2>
+            <p className="text-sm text-muted" style={{ marginTop: 0 }}>
+              Overview of your AI chatbot deployment
+            </p>
+          </div>
+        </div>
+        <StatGridSkeleton cards={6} />
+      </div>
+    );
+  }
 
   return (
     <div>
-      <h2 style={{ fontSize: 20, marginBottom: 4 }}>Dashboard</h2>
-      <p className="text-sm text-muted" style={{ marginTop: 0 }}>
-        Overview of your AI chatbot deployment
-      </p>
+      <div className="page-header">
+        <div className="page-header-title">
+          <h2>Dashboard</h2>
+          <p className="text-sm text-muted" style={{ marginTop: 0 }}>
+            Overview of your AI chatbot deployment
+          </p>
+        </div>
+      </div>
 
       <div className="grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginTop: 20 }}>
         <StatCard label="Total users" value={stats.users.total} icon={<FaUsers />} hint={`${stats.users.active} active`} />

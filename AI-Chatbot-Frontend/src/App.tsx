@@ -1,27 +1,34 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { PublicLayout } from '@/components/layout/PublicLayout';
 import { AppShell } from '@/components/layout/AppShell';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { ProtectedRoute, AdminRoute, PublicOnlyRoute } from '@/routes/guards';
+import { FullPageSpinner } from '@/components/ui/Spinner';
 import { LandingPage } from '@/pages/LandingPage';
-import { LoginPage } from '@/pages/auth/LoginPage';
-import { RegisterPage } from '@/pages/auth/RegisterPage';
-import { ForgotPasswordPage, ResetPasswordPage } from '@/pages/auth/PasswordPages';
-import { ChatPage } from '@/pages/chat/ChatPage';
-import { ShareView } from '@/pages/chat/ShareView';
-import { AdminDashboard } from '@/pages/admin/Dashboard';
-import { AdminUsers } from '@/pages/admin/Users';
-import { AdminNotices } from '@/pages/admin/Notices';
-import { AdminChats } from '@/pages/admin/Chats';
-import { AdminAnalytics } from '@/pages/admin/Analytics';
-import { AdminTokens } from '@/pages/admin/Tokens';
-import { AdminSettings } from '@/pages/admin/Settings';
-import { AdminPromptTemplates } from '@/pages/admin/PromptTemplates';
-import { AdminLogs } from '@/pages/admin/Logs';
-import { AdminSystem } from '@/pages/admin/System';
 import { useAuthStore } from '@/store/auth.store';
 import { useChatStore } from '@/store/chat.store';
+
+// Route-level code splitting: heavy pages (markdown/katex/highlight.js,
+// admin tables & charts) are loaded on demand so the initial bundle stays small.
+const LoginPage = lazy(() => import('@/pages/auth/LoginPage').then((m) => ({ default: m.LoginPage })));
+const RegisterPage = lazy(() => import('@/pages/auth/RegisterPage').then((m) => ({ default: m.RegisterPage })));
+const ForgotPasswordPage = lazy(() => import('@/pages/auth/PasswordPages').then((m) => ({ default: m.ForgotPasswordPage })));
+const ResetPasswordPage = lazy(() => import('@/pages/auth/PasswordPages').then((m) => ({ default: m.ResetPasswordPage })));
+const ChatPage = lazy(() => import('@/pages/chat/ChatPage').then((m) => ({ default: m.ChatPage })));
+const ShareView = lazy(() => import('@/pages/chat/ShareView').then((m) => ({ default: m.ShareView })));
+const AdminDashboard = lazy(() => import('@/pages/admin/Dashboard').then((m) => ({ default: m.AdminDashboard })));
+const AdminUsers = lazy(() => import('@/pages/admin/Users').then((m) => ({ default: m.AdminUsers })));
+const AdminNotices = lazy(() => import('@/pages/admin/Notices').then((m) => ({ default: m.AdminNotices })));
+const AdminChats = lazy(() => import('@/pages/admin/Chats').then((m) => ({ default: m.AdminChats })));
+const AdminAnalytics = lazy(() => import('@/pages/admin/Analytics').then((m) => ({ default: m.AdminAnalytics })));
+const AdminTokens = lazy(() => import('@/pages/admin/Tokens').then((m) => ({ default: m.AdminTokens })));
+const AdminSettings = lazy(() => import('@/pages/admin/Settings').then((m) => ({ default: m.AdminSettings })));
+const AdminPromptTemplates = lazy(() => import('@/pages/admin/PromptTemplates').then((m) => ({ default: m.AdminPromptTemplates })));
+const AdminLogs = lazy(() => import('@/pages/admin/Logs').then((m) => ({ default: m.AdminLogs })));
+const AdminSystem = lazy(() => import('@/pages/admin/System').then((m) => ({ default: m.AdminSystem })));
+
+const PageLoader = () => <FullPageSpinner label="Loading…" />;
 
 export default function App() {
   const initialize = useAuthStore((s) => s.initialize);
@@ -46,41 +53,43 @@ export default function App() {
   }, [resetChat]);
 
   return (
-    <Routes>
-      <Route element={<PublicLayout />}>
-        <Route path="/" element={<LandingPage />} />
-        <Route element={<PublicOnlyRoute />}>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
+    <Suspense fallback={<PageLoader />}>
+      <Routes>
+        <Route element={<PublicLayout />}>
+          <Route path="/" element={<LandingPage />} />
+          <Route element={<PublicOnlyRoute />}>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+          </Route>
+          <Route path="/share/:token" element={<ShareView />} />
         </Route>
-        <Route path="/share/:token" element={<ShareView />} />
-      </Route>
 
-      <Route element={<ProtectedRoute />}>
-        <Route element={<AppShell />}>
-          <Route path="/chat" element={<ChatPage />} />
-          <Route path="/chat/:id" element={<ChatPage />} />
+        <Route element={<ProtectedRoute />}>
+          <Route element={<AppShell />}>
+            <Route path="/chat" element={<ChatPage />} />
+            <Route path="/chat/:id" element={<ChatPage />} />
+          </Route>
         </Route>
-      </Route>
 
-      <Route element={<AdminRoute />}>
-        <Route element={<AdminLayout />}>
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/users" element={<AdminUsers />} />
-          <Route path="/admin/notices" element={<AdminNotices />} />
-          <Route path="/admin/chats" element={<AdminChats />} />
-          <Route path="/admin/analytics" element={<AdminAnalytics />} />
-          <Route path="/admin/tokens" element={<AdminTokens />} />
-          <Route path="/admin/settings" element={<AdminSettings />} />
-          <Route path="/admin/prompt-templates" element={<AdminPromptTemplates />} />
-          <Route path="/admin/logs" element={<AdminLogs />} />
-          <Route path="/admin/system" element={<AdminSystem />} />
+        <Route element={<AdminRoute />}>
+          <Route element={<AdminLayout />}>
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/users" element={<AdminUsers />} />
+            <Route path="/admin/notices" element={<AdminNotices />} />
+            <Route path="/admin/chats" element={<AdminChats />} />
+            <Route path="/admin/analytics" element={<AdminAnalytics />} />
+            <Route path="/admin/tokens" element={<AdminTokens />} />
+            <Route path="/admin/settings" element={<AdminSettings />} />
+            <Route path="/admin/prompt-templates" element={<AdminPromptTemplates />} />
+            <Route path="/admin/logs" element={<AdminLogs />} />
+            <Route path="/admin/system" element={<AdminSystem />} />
+          </Route>
         </Route>
-      </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
   );
 }

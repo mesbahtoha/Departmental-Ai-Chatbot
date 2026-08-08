@@ -6,7 +6,7 @@ import { apiDelete, apiGet, apiPost, apiPut, getErrorMessage } from '@/lib/api';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { FullPageSpinner } from '@/components/ui/Spinner';
+import { TableSkeleton } from '@/components/ui/Skeleton';
 import { Field, Input, Textarea } from '@/components/ui/Form';
 import { Modal } from '@/components/ui/Modal';
 import { Toggle } from '@/components/ui/Toggle';
@@ -98,16 +98,20 @@ export function AdminPromptTemplates() {
 
   return (
     <div>
-      <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
-        <div>
-          <h2 style={{ fontSize: 20, marginBottom: 2 }}>Prompt templates</h2>
+      <div className="page-header">
+        <div className="page-header-title">
+          <h2>Prompt templates</h2>
           <span className="text-sm text-muted">Personas and instructions for the assistant</span>
         </div>
-        <Button onClick={() => setCreateOpen(true)}><FaPlus /> New template</Button>
+        <div className="page-header-actions">
+          <Button onClick={() => setCreateOpen(true)}><FaPlus /> New template</Button>
+        </div>
       </div>
 
       {loading ? (
-        <FullPageSpinner label="Loading templates…" />
+        <div className="card">
+          <TableSkeleton rows={4} />
+        </div>
       ) : templates.length === 0 ? (
         <div className="card">
           <EmptyState

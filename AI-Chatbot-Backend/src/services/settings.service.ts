@@ -1,5 +1,6 @@
 import { settingRepository } from '../repositories/setting.repository';
 import { DEFAULT_SETTINGS } from '../constants';
+import { createTtlCache } from '../utils/cache';
 
 export interface AISettings {
   model: string;
@@ -19,13 +20,28 @@ export interface AppSettings {
   showSuggestedPrompts: boolean;
 }
 
+// Settings change rarely; cache them briefly so AI requests don't pay a
+// MongoDB round-trip on every call (getAISettings is hit 2-4x per chat).
+// The cache is invalidated whenever the admin updates settings.
+const cache = createTtlCache<Record<string, unknown>>(30_000);
+
 /**
  * Settings service - reads typed application settings from the DB
  * with env/constant fallbacks so the app never crashes on missing keys.
  */
 export const settingsService = {
+  async loadValues(keys: string[]): Promise<Record<string, unknown>> {
+    const cacheKey = keys.join(',');
+    const cached = cache.get(cacheKey);
+    if (cached) return cached;
+
+    const values = await settingRepository.getMany(keys);
+    cache.set(cacheKey, values);
+    return values;
+  },
+
   async getAppSettings(): Promise<AppSettings> {
-    const values = await settingRepository.getMany([
+    const values = await this.loadValues([
       'app.title',
       'app.tagline',
       'app.allowRegistration',
@@ -43,7 +59,7 @@ export const settingsService = {
   },
 
   async getAISettings(): Promise<AISettings> {
-    const values = await settingRepository.getMany([
+    const values = await this.loadValues([
       'ai.model',
       'ai.temperature',
       'ai.maxTokens',
@@ -76,6 +92,12 @@ export const settingsService = {
 
   async updateMany(entries: Array<{ key: string; value: unknown }>): Promise<void> {
     await settingRepository.setMany(entries);
+    cache.clear();
+  },
+
+  /** Clears the cached settings (used by seeders/imports). */
+  clearCache(): void {
+    cache.clear();
   },
 };
 

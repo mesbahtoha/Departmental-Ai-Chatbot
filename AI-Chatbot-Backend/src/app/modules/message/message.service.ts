@@ -252,17 +252,23 @@ export const messageService = {
     conversationId: Types.ObjectId,
     beforeMessageId?: Types.ObjectId
   ): Promise<Array<{ role: 'user' | 'assistant'; content: string }>> {
-    const messages = (await messageRepository.listByConversation(conversationId, {
-      limit: HISTORY_LIMIT + 1,
-    })) as unknown as MessageLike[];
-
-    let list = messages;
+    // Resolve the cut-off point, then fetch the *most recent* HISTORY_LIMIT
+    // messages before it (previously the oldest messages were returned,
+    // which starved long conversations of context).
+    let before: Date | undefined;
     if (beforeMessageId) {
-      const index = list.findIndex((m) => String(m._id) === String(beforeMessageId));
-      if (index !== -1) list = list.slice(0, index);
+      const refMessage = await messageRepository.findById(beforeMessageId);
+      if (refMessage) before = refMessage.createdAt;
     }
 
-    return list
+    const messages = (await messageRepository.listByConversation(conversationId, {
+      before,
+      limit: HISTORY_LIMIT,
+      sort: 'desc',
+    })) as unknown as MessageLike[];
+
+    return messages
+      .reverse()
       .filter((m) => m.role === 'user' || m.role === 'assistant')
       .map((m) => ({
         role: (m.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',

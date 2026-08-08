@@ -44,8 +44,8 @@ export function ChatComposer({
 
   return (
     <div
+      className="chat-composer"
       style={{
-        padding: '10px 0 16px',
         maxWidth: 860,
         margin: '0 auto',
         width: '100%',

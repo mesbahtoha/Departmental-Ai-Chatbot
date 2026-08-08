@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { FaSave, FaKey } from 'react-icons/fa';
 import { apiGet, apiPut, getErrorMessage } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
-import { FullPageSpinner } from '@/components/ui/Spinner';
+import { TableSkeleton } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
 import { Input, Select, Textarea } from '@/components/ui/Form';
 import { Toggle } from '@/components/ui/Toggle';
@@ -148,18 +148,34 @@ export function AdminSettings() {
     }
   };
 
-  if (!entries.length) return <FullPageSpinner label="Loading settings…" />;
+  if (!entries.length) {
+    return (
+      <div style={{ maxWidth: 760 }}>
+        <div className="page-header">
+          <div className="page-header-title">
+            <h2>Settings</h2>
+            <span className="text-sm text-muted">Appearance, AI model, quotas and more</span>
+          </div>
+        </div>
+        <div className="card">
+          <TableSkeleton rows={5} />
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ maxWidth: 760 }}>
-      <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
-        <div>
-          <h2 style={{ fontSize: 20, marginBottom: 2 }}>Settings</h2>
+    <div style={{ maxWidth: 760, width: '100%' }}>
+      <div className="page-header">
+        <div className="page-header-title">
+          <h2>Settings</h2>
           <span className="text-sm text-muted">Appearance, AI model, quotas and more</span>
         </div>
-        <Button onClick={() => void save()} loading={saving}>
-          <FaSave /> Save changes
-        </Button>
+        <div className="page-header-actions">
+          <Button onClick={() => void save()} loading={saving}>
+            <FaSave /> Save changes
+          </Button>
+        </div>
       </div>
 
       <div className="card mb-4" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>

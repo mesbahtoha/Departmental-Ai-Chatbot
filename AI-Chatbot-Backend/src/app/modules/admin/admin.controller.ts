@@ -4,6 +4,7 @@ import adminService from './admin.service';
 import noticeService from '../../../services/notice.service';
 import { noticeRepository } from '../../../repositories/notice.repository';
 import { PromptTemplateModel } from '../../../database/models/PromptTemplate.model';
+import { clearPromptTemplateCache } from '../../../services/ai.service';
 import { maskSecret } from '../../../utils/token.utils';
 import env from '../../../config/env';
 
@@ -177,18 +178,21 @@ export const adminController = {
     if (existing) return fail(res, 409, 'A template with this key already exists');
 
     const template = await PromptTemplateModel.create(req.body);
+    clearPromptTemplateCache();
     res.status(201).json({ success: true, template });
   }),
 
   updateTemplate: asyncHandler(async (req: Request, res: Response) => {
     const template = await PromptTemplateModel.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!template) return fail(res, 404, 'Template not found');
+    clearPromptTemplateCache();
     ok(res, { template });
   }),
 
   deleteTemplate: asyncHandler(async (req: Request, res: Response) => {
     const template = await PromptTemplateModel.findByIdAndDelete(req.params.id);
     if (!template) return fail(res, 404, 'Template not found');
+    clearPromptTemplateCache();
     ok(res, { message: 'Template deleted' });
   }),
 

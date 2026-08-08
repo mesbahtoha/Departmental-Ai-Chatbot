@@ -56,14 +56,12 @@ export const conversationService = {
   },
 
   async clearAll(userId: string): Promise<number> {
-    const conversations = await conversationRepository.listByUser(userId, { limit: 100 });
-    let deleted = 0;
-    for (const conversation of conversations.items) {
-      await messageRepository.deleteByConversation(conversation._id);
-      await conversationRepository.delete(conversation._id);
-      deleted += 1;
-    }
-    return deleted;
+    // Bulk deletes: one statement per collection instead of one per conversation.
+    const [conversationCount, messageCount] = await Promise.all([
+      conversationRepository.deleteManyByUser(userId),
+      messageRepository.deleteManyByUser(userId),
+    ]);
+    return conversationCount + messageCount;
   },
 
   async exportChat(conversationId: string, userId: string, format: 'json' | 'markdown') {

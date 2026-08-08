@@ -22,6 +22,14 @@ export const noticeRepository = {
       .lean() as unknown as Array<Record<string, unknown>>;
   },
 
+  /** Full lookup by ids (used by search to hydrate chunk matches in bulk). */
+  async findByIdsFull(ids: unknown[]): Promise<Array<Record<string, unknown>>> {
+    if (!ids.length) return [];
+    return NoticeModel.find({ _id: { $in: ids } })
+      .select('_id title category type fileId mimeType rawText summary createdAt')
+      .lean() as unknown as Array<Record<string, unknown>>;
+  },
+
   async findByIdLean(id: unknown) {
     try {
       return await NoticeModel.findById(String(id)).lean();

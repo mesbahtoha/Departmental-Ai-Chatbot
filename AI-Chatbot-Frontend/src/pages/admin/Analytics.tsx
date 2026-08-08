@@ -3,7 +3,7 @@ import { FaChartLine } from 'react-icons/fa';
 import { apiGet } from '@/lib/api';
 import { BarChart } from '@/components/ui/BarChart';
 import { StatCard } from '@/components/ui/StatCard';
-import { FullPageSpinner } from '@/components/ui/Spinner';
+import { StatGridSkeleton } from '@/components/ui/Skeleton';
 import { Select } from '@/components/ui/Form';
 import { formatTokens } from '@/lib/format';
 
@@ -26,7 +26,19 @@ export function AdminAnalytics() {
       .catch(() => setData(null));
   }, [groupBy]);
 
-  if (!data) return <FullPageSpinner label="Loading analytics…" />;
+  if (!data) {
+    return (
+      <div>
+        <div className="page-header">
+          <div className="page-header-title">
+            <h2>Analytics</h2>
+            <span className="text-sm text-muted">Loading usage data…</span>
+          </div>
+        </div>
+        <StatGridSkeleton cards={3} />
+      </div>
+    );
+  }
 
   const series = data.series.map((row) => ({
     label: new Date(row.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
@@ -37,17 +49,19 @@ export function AdminAnalytics() {
 
   return (
     <div>
-      <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
-        <div>
-          <h2 style={{ fontSize: 20, marginBottom: 2 }}>Analytics</h2>
+      <div className="page-header">
+        <div className="page-header-title">
+          <h2>Analytics</h2>
           <span className="text-sm text-muted">
             {new Date(data.range.from).toLocaleDateString()} → {new Date(data.range.to).toLocaleDateString()}
           </span>
         </div>
-        <Select value={groupBy} onChange={(e) => setGroupBy(e.target.value)} style={{ width: 140 }}>
-          <option value="day">By day</option>
-          <option value="month">By month</option>
-        </Select>
+        <div className="page-header-actions">
+          <Select value={groupBy} onChange={(e) => setGroupBy(e.target.value)} style={{ width: 140 }}>
+            <option value="day">By day</option>
+            <option value="month">By month</option>
+          </Select>
+        </div>
       </div>
 
       <div className="grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>

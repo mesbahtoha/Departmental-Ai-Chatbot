@@ -56,12 +56,13 @@ export const messageRepository = {
 
   async listByConversation(
     conversationId: string | Types.ObjectId,
-    options: { before?: Date; limit?: number } = {}
+    options: { before?: Date; limit?: number; sort?: 'asc' | 'desc' } = {}
   ): Promise<MessageDocument[]> {
     const filter: Record<string, unknown> = { conversationId };
     if (options.before) filter.createdAt = { $lt: options.before };
+    const sortDir = options.sort === 'desc' ? -1 : 1;
     return MessageModel.find(filter as never)
-      .sort({ createdAt: 1 })
+      .sort({ createdAt: sortDir })
       .limit(options.limit || 200);
   },
 
@@ -75,6 +76,11 @@ export const messageRepository = {
 
   async deleteByConversation(conversationId: string | Types.ObjectId): Promise<void> {
     await MessageModel.deleteMany({ conversationId });
+  },
+
+  async deleteManyByUser(userId: string | Types.ObjectId): Promise<number> {
+    const result = await MessageModel.deleteMany({ userId });
+    return result.deletedCount ?? 0;
   },
 
   async deleteAfter(

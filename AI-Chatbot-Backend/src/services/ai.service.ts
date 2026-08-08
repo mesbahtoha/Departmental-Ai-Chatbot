@@ -3,6 +3,7 @@ import { searchNotices, getTopContextChunks, buildCitationsFromChunks, attachNot
 import { ChatLogModel } from '../database/models/ChatLog.model';
 import { PromptTemplateModel } from '../database/models/PromptTemplate.model';
 import { settingsService } from './settings.service';
+import { createTtlCache } from '../utils/cache';
 import {
   buildPreview,
   detectLanguage,
@@ -11,6 +12,33 @@ import {
   safeJsonParse,
 } from '../utils/text.utils';
 import { log } from '../config/logger';
+
+interface ActiveTemplate {
+  content: string;
+  isDefault?: boolean;
+}
+
+// Prompt templates change rarely; cache them briefly so chat requests
+// skip a MongoDB query on every message. Invalidate on admin CRUD.
+const templateCache = createTtlCache<ActiveTemplate[]>(30_000);
+
+/** Invalidates the cached prompt templates (call after admin CRUD). */
+export function clearPromptTemplateCache(): void {
+  templateCache.clear();
+}
+
+async function getActiveTemplates(): Promise<ActiveTemplate[]> {
+  const cached = templateCache.get('active');
+  if (cached) return cached;
+
+  const templates = (await PromptTemplateModel.find({ isActive: true })
+    .sort({ isDefault: -1 })
+    .select('content isDefault')
+    .lean()) as unknown as ActiveTemplate[];
+
+  templateCache.set('active', templates);
+  return templates;
+}
 
 interface ContextAnswer {
   answer: string;
@@ -265,9 +293,7 @@ ${combinedContext}
   }): Promise<{ messages: ChatMessageInput[]; context?: { searchResults: SearchResultItem[]; citations: Array<Record<string, unknown>> } }> {
     const aiSettings = await settingsService.getAISettings();
 
-    const templates = await PromptTemplateModel.find({ isActive: true })
-      .sort({ isDefault: -1 })
-      .lean();
+    const templates = await getActiveTemplates();
 
     const systemParts: string[] = [];
 

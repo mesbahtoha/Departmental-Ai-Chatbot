@@ -2,8 +2,9 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import { memo } from 'react';
+import { memo, useDeferredValue } from 'react';
 import { CodeBlock } from './CodeBlock';
+import 'katex/dist/katex.min.css';
 
 interface MarkdownRendererProps {
   content: string;
@@ -11,6 +12,10 @@ interface MarkdownRendererProps {
 }
 
 export const MarkdownRenderer = memo(function MarkdownRenderer({ content, streaming }: MarkdownRendererProps) {
+  // During SSE streaming the content grows on every token; deferring the
+  // markdown parse keeps the main thread responsive (typing feels smooth).
+  const rendered = useDeferredValue(content);
+
   return (
     <div className="md-body">
       <ReactMarkdown
@@ -39,7 +44,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ content, stream
           },
         }}
       >
-        {content}
+        {rendered}
       </ReactMarkdown>
       {streaming && <span className="typing-cursor" />}
     </div>

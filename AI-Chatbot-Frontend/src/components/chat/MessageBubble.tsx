@@ -50,7 +50,7 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
   const showActions = !isUser && !streaming && message.status === 'complete';
 
   return (
-    <div className="flex" style={{ gap: 12, padding: '18px 0' }}>
+    <div className="flex message-row">
       <div
         className="avatar"
         style={{
@@ -110,10 +110,10 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
               {feedback === 'dislike' ? <MdThumbDown style={{ color: 'var(--color-danger)' }} /> : <FaRegThumbsDown />}
             </button>
             {showComment && (
-              <div className="flex items-center" style={{ gap: 8, marginLeft: 8 }}>
+              <div className="flex items-center" style={{ gap: 8, marginLeft: 8, flexWrap: 'wrap' }}>
                 <input
-                  className="input"
-                  style={{ width: 220, padding: '6px 10px', fontSize: 13 }}
+                  className="input feedback-input"
+                  style={{ padding: '6px 10px', fontSize: 13 }}
                   placeholder="Tell us what went wrong…"
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}

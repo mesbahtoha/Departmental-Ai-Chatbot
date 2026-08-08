@@ -5,7 +5,7 @@ import { apiGet, getErrorMessage } from '@/lib/api';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Pagination } from '@/components/ui/Pagination';
-import { FullPageSpinner } from '@/components/ui/Spinner';
+import { TableSkeleton } from '@/components/ui/Skeleton';
 import { Select } from '@/components/ui/Form';
 import { formatDateTime, truncate } from '@/lib/format';
 import type { LogRecord } from '@/types';
@@ -50,24 +50,24 @@ export function AdminLogs() {
 
   return (
     <div>
-      <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
-        <div>
-          <h2 style={{ fontSize: 20, marginBottom: 2 }}>System logs</h2>
+      <div className="page-header">
+        <div className="page-header-title">
+          <h2>System logs</h2>
           <span className="text-sm text-muted">{total} entries</span>
         </div>
-        <Select value={level} onChange={(e) => { setLevel(e.target.value); setPage(1); }} style={{ width: 140 }}>
-          <option value="">All levels</option>
-          {LEVELS.map((lvl) => (
-            <option key={lvl} value={lvl}>{lvl}</option>
-          ))}
-        </Select>
+        <div className="page-header-actions">
+          <Select value={level} onChange={(e) => { setLevel(e.target.value); setPage(1); }} style={{ width: 140 }}>
+            <option value="">All levels</option>
+            {LEVELS.map((lvl) => (
+              <option key={lvl} value={lvl}>{lvl}</option>
+            ))}
+          </Select>
+        </div>
       </div>
 
       <div className="card">
         {loading ? (
-          <div style={{ padding: 40 }}>
-            <FullPageSpinner label="Loading logs…" />
-          </div>
+          <TableSkeleton rows={7} />
         ) : logs.length === 0 ? (
           <EmptyState icon={<FaTerminal />} title="No log entries" description="Logs will appear as the server processes requests." />
         ) : (

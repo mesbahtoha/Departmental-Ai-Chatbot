@@ -4,7 +4,7 @@ import { MdCheckCircle, MdErrorOutline } from 'react-icons/md';
 import { apiGet } from '@/lib/api';
 import { StatCard } from '@/components/ui/StatCard';
 import { Badge } from '@/components/ui/Badge';
-import { FullPageSpinner } from '@/components/ui/Spinner';
+import { StatGridSkeleton } from '@/components/ui/Skeleton';
 import { formatTokens } from '@/lib/format';
 
 interface UsageSummary {
@@ -33,22 +33,39 @@ export function AdminTokens() {
       .catch(() => setData(null));
   }, []);
 
-  if (!data) return <FullPageSpinner label="Loading token usage…" />;
+  if (!data) {
+    return (
+      <div>
+        <div className="page-header">
+          <div className="page-header-title">
+            <h2>Token usage</h2>
+            <p className="text-sm text-muted" style={{ marginTop: 0 }}>
+              OpenAI-compatible tokens consumed by the AI assistant
+            </p>
+          </div>
+        </div>
+        <StatGridSkeleton cards={4} />
+      </div>
+    );
+  }
 
   return (
     <div>
-      <h2 style={{ fontSize: 20, marginBottom: 2 }}>Token usage</h2>
-      <p className="text-sm text-muted" style={{ marginTop: 0 }}>
-        OpenAI-compatible tokens consumed by the AI assistant
-      </p>
-
-      <div className="flex items-center gap-2 mb-4">
-        {data.apiKeyConfigured ? (
-          <Badge variant="success"><MdCheckCircle /> API key configured</Badge>
-        ) : (
-          <Badge variant="danger"><MdErrorOutline /> No API key set</Badge>
-        )}
-        <Badge variant="muted">{data.accounts.users} users · {data.accounts.admins} admins</Badge>
+      <div className="page-header">
+        <div className="page-header-title">
+          <h2>Token usage</h2>
+          <p className="text-sm text-muted" style={{ marginTop: 0 }}>
+            OpenAI-compatible tokens consumed by the AI assistant
+          </p>
+        </div>
+        <div className="page-header-actions">
+          {data.apiKeyConfigured ? (
+            <Badge variant="success"><MdCheckCircle /> API key configured</Badge>
+          ) : (
+            <Badge variant="danger"><MdErrorOutline /> No API key set</Badge>
+          )}
+          <Badge variant="muted">{data.accounts.users} users · {data.accounts.admins} admins</Badge>
+        </div>
       </div>
 
       <div className="grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>

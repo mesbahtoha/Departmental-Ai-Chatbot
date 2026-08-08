@@ -6,7 +6,7 @@ import { apiDelete, apiGet, apiPost, getErrorMessage } from '@/lib/api';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { FullPageSpinner } from '@/components/ui/Spinner';
+import { TableSkeleton } from '@/components/ui/Skeleton';
 import { Field, Input, Select, Textarea } from '@/components/ui/Form';
 import { Modal } from '@/components/ui/Modal';
 import { formatDate } from '@/lib/format';
@@ -119,12 +119,12 @@ export function AdminNotices() {
 
   return (
     <div>
-      <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
-        <div>
-          <h2 style={{ fontSize: 20, marginBottom: 2 }}>Notices &amp; documents</h2>
+      <div className="page-header">
+        <div className="page-header-title">
+          <h2>Notices &amp; documents</h2>
           <span className="text-sm text-muted">{notices.length} notices · fed to the AI assistant</span>
         </div>
-        <div className="flex items-center" style={{ gap: 10 }}>
+        <div className="page-header-actions">
           <Select value={category} onChange={(e) => setCategory(e.target.value)} style={{ width: 160 }}>
             <option value="">All categories</option>
             {CATEGORIES.map((c) => (
@@ -139,9 +139,7 @@ export function AdminNotices() {
 
       <div className="card">
         {loading ? (
-          <div style={{ padding: 40 }}>
-            <FullPageSpinner label="Loading notices…" />
-          </div>
+          <TableSkeleton rows={5} />
         ) : notices.length === 0 ? (
           <EmptyState
             icon={<FaFileAlt />}
