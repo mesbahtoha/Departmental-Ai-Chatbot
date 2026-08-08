@@ -29,6 +29,7 @@ export function createApp(): Express {
 
   // Request id (useful for log correlation)
   app.use((req: Request, res: Response, next: NextFunction) => {
+    if (req.originalUrl === '/') log.info('TRACE root: express middleware start');
     req.requestId = (req.headers['x-request-id'] as string) || crypto.randomUUID();
     res.setHeader('X-Request-Id', req.requestId);
     next();
