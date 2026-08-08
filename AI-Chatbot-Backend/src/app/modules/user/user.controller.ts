@@ -26,7 +26,7 @@ export const userController = {
   }),
 
   usage: asyncHandler(async (req: Request, res: Response) => {
-    const status = await quotaService.getStatus(req.user!.id);
+    const status = await quotaService.getStatus(req.user!.id, req.user!.role);
     const estimatedDailyCostUsd = estimateCostUsd(status.daily.used);
     ok(res, { usage: { ...status, estimatedDailyCostUsd } });
   }),

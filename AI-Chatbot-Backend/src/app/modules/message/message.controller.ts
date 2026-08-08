@@ -22,7 +22,8 @@ async function streamAiResponse(
   res: Response,
   prepared: Awaited<ReturnType<typeof messageService.prepareNewMessage>>,
   userId: string,
-  conversationId: string
+  conversationId: string,
+  role?: string
 ): Promise<void> {
   const assistantId = prepared.assistantMessage._id;
   const requestType = 'chat';
@@ -157,7 +158,7 @@ async function streamAiResponse(
       requestType,
     });
 
-    const quota = await quotaService.getStatus(userId);
+    const quota = await quotaService.getStatus(userId, role);
 
     writeEvent(res, {
       type: 'usage',
@@ -222,9 +223,9 @@ export const messageController = {
       attachments,
     });
 
-    await quotaService.assertCanUseAI(req.user!.id, prepared.estimatedPromptTokens);
+    await quotaService.assertCanUseAI(req.user!.id, prepared.estimatedPromptTokens, req.user!.role);
 
-    await streamAiResponse(res, prepared, req.user!.id, conversationId);
+    await streamAiResponse(res, prepared, req.user!.id, conversationId, req.user!.role);
   }),
 
   /** Regenerates a previous assistant response (SSE). */
@@ -240,9 +241,9 @@ export const messageController = {
       mode,
     });
 
-    await quotaService.assertCanUseAI(req.user!.id, prepared.estimatedPromptTokens);
+    await quotaService.assertCanUseAI(req.user!.id, prepared.estimatedPromptTokens, req.user!.role);
 
-    await streamAiResponse(res, prepared, req.user!.id, conversationId);
+    await streamAiResponse(res, prepared, req.user!.id, conversationId, req.user!.role);
   }),
 
   /** Continues the last assistant response (SSE). */
@@ -257,9 +258,9 @@ export const messageController = {
       mode,
     });
 
-    await quotaService.assertCanUseAI(req.user!.id, prepared.estimatedPromptTokens);
+    await quotaService.assertCanUseAI(req.user!.id, prepared.estimatedPromptTokens, req.user!.role);
 
-    await streamAiResponse(res, prepared, req.user!.id, conversationId);
+    await streamAiResponse(res, prepared, req.user!.id, conversationId, req.user!.role);
   }),
 
   /** Like / dislike feedback on an assistant message. */
@@ -280,7 +281,7 @@ export const messageController = {
 
   /** Token usage status for the authenticated user. */
   usage: asyncHandler(async (req: Request, res: Response) => {
-    const status = await quotaService.getStatus(req.user!.id);
+    const status = await quotaService.getStatus(req.user!.id, req.user!.role);
     const cost = estimateCostUsd(status.daily.used);
     res.json({ success: true, usage: { ...status, estimatedDailyCostUsd: cost } });
   }),

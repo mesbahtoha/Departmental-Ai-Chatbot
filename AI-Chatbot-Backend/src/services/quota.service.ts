@@ -37,11 +37,39 @@ function startOfMonth(): Date {
 
 /**
  * Token quota service - enforces per-user daily/monthly AI token limits.
- * Limits of 0 mean "unlimited".
+ * Limits of 0 mean "unlimited". Admins (incl. super admin) are always
+ * exempt from quotas - they manage the app and must never be locked out.
  */
 export const quotaService = {
-  async getStatus(userId: string | Types.ObjectId | null | undefined): Promise<QuotaStatus> {
+  isAdminExempt(role?: string): boolean {
+    return role === 'admin' || role === 'superadmin';
+  },
+
+  async getStatus(
+    userId: string | Types.ObjectId | null | undefined,
+    role?: string
+  ): Promise<QuotaStatus> {
     const aiSettings = await settingsService.getAISettings();
+
+    // Admins are exempt: report usage for visibility but never enforce limits.
+    if (this.isAdminExempt(role)) {
+      if (!userId) {
+        return {
+          daily: { used: 0, limit: 0, remaining: -1 },
+          monthly: { used: 0, limit: 0, remaining: -1 },
+          exhausted: false,
+        };
+      }
+      const [daily, monthly] = await Promise.all([
+        usageRepository.summaryForUser(userId, { start: startOfDay(), end: new Date() }),
+        usageRepository.summaryForUser(userId, { start: startOfMonth(), end: new Date() }),
+      ]);
+      return {
+        daily: { used: daily.totalTokens, limit: 0, remaining: -1 },
+        monthly: { used: monthly.totalTokens, limit: 0, remaining: -1 },
+        exhausted: false,
+      };
+    }
 
     if (!userId) {
       return {
@@ -84,11 +112,15 @@ export const quotaService = {
   /**
    * Checks whether a request for `estimatedPromptTokens` can proceed.
    * Throws QuotaExceededError when the quota is exhausted.
+   * Admins are always allowed through.
    */
   async assertCanUseAI(
     userId: string | Types.ObjectId | null | undefined,
-    estimatedPromptTokens: number
+    estimatedPromptTokens: number,
+    role?: string
   ): Promise<void> {
+    if (this.isAdminExempt(role)) return;
+
     const status = await this.getStatus(userId);
     if (status.exhausted) {
       throw new QuotaExceededError();
