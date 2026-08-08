@@ -1,5 +1,5 @@
 import OpenRouterClient, { ChatMessageInput } from './openrouter.client';
-import { searchNotices, getTopContextChunks, buildCitationsFromChunks, attachNoticeMeta, SearchResultItem } from './search.service';
+import { searchNotices, getTopContextChunks, buildCitationsFromChunks, attachNoticeMeta, RELEVANCE_THRESHOLD, SearchResultItem } from './search.service';
 import { readChatAttachments, deleteChatAttachments, ChatAttachmentType } from './attachment.service';
 import { ChatLogModel } from '../database/models/ChatLog.model';
 import { PromptTemplateModel } from '../database/models/PromptTemplate.model';
@@ -9,6 +9,7 @@ import pdfParse from 'pdf-parse';
 import {
   buildPreview,
   detectLanguage,
+  isGreetingIntent,
   isNoticeRelatedQuery,
   normalizeText,
   safeJsonParse,
@@ -339,20 +340,27 @@ ${combinedContext}
 
     systemParts.push(buildLanguageInstruction(input.language));
 
-    // RAG context: only surface notice sources when the question is actually
-    // about notices (exams, routines, fees, scholarships, etc.) - or when the
-    // conversation was already grounded in notices (follow-up questions).
+    // RAG context: search the uploaded notices for EVERY non-greeting message
+    // so natural-language questions (English, Bengali, Banglish, or mixed)
+    // reliably find relevant content even when they don't repeat the exact
+    // words used in the documents. Context is only included when a match is
+    // strong enough (RELEVANCE_THRESHOLD) - otherwise the model answers as a
+    // general assistant and is told not to invent university facts.
     let ragBlock = '';
     let citations: Array<Record<string, unknown>> = [];
     let searchResults: SearchResultItem[] = [];
 
+    const isGreeting = isGreetingIntent(input.userContent);
+    const noticeRelated = isNoticeRelatedQuery(input.userContent);
     const followUpOnNotices = input.history
       .slice(-4)
       .some((item) => item.role === 'assistant' && /\[source\s*\d|source \d|notice context/i.test(item.content));
 
-    if (input.includeRagContext !== false && (isNoticeRelatedQuery(input.userContent) || followUpOnNotices)) {
+    if (input.includeRagContext !== false && !isGreeting) {
       searchResults = await searchNotices(input.userContent, '', 5);
-      if (searchResults.length) {
+      const bestScore = searchResults[0]?.relevanceScore ?? 0;
+
+      if (searchResults.length && bestScore >= RELEVANCE_THRESHOLD) {
         const contextChunks = await getTopContextChunks(searchResults, input.userContent, 8);
         const blocks = contextChunks.map(
           (chunk, idx) =>
@@ -361,6 +369,17 @@ ${combinedContext}
         ragBlock = blocks.join('\n\n====================\n\n');
         citations = await buildCitationsFromChunks(contextChunks);
       }
+    }
+
+    // When the user asks about university matters but no uploaded notice
+    // matched, explicitly forbid guessing facts (avoids "random answers").
+    const wantedNoticeContext = noticeRelated || followUpOnNotices;
+    if (wantedNoticeContext && !ragBlock && !isGreeting) {
+      systemParts.push(
+        "The user's question appears to be about university matters (notices, exams, routines, results, fees, admission, scholarships, documents), but no matching official notice was found in the uploaded documents.\n" +
+          '- Do NOT invent or guess university-specific facts (exam dates, results, deadlines, fees, schedules, admission requirements).\n' +
+          '- Say clearly that you could not find an official notice covering it, then offer general help or ask the user to upload the relevant document.'
+      );
     }
 
     const messages: ChatMessageInput[] = [];

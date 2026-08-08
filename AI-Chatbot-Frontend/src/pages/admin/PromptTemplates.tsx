@@ -17,6 +17,7 @@ export function AdminPromptTemplates() {
   const [templates, setTemplates] = useState<PromptTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [key, setKey] = useState('');
   const [description, setDescription] = useState('');
@@ -39,7 +40,16 @@ export function AdminPromptTemplates() {
     void load();
   }, [load]);
 
-  const create = async (e: React.FormEvent) => {
+  const openCreate = () => {
+    setEditingId(null);
+    setName('');
+    setKey('');
+    setDescription('');
+    setContent('');
+    setCreateOpen(true);
+  };
+
+  const save = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !key.trim() || !content.trim()) {
       toast.error('Name, key and content are required');
@@ -47,14 +57,21 @@ export function AdminPromptTemplates() {
     }
     setSaving(true);
     try {
-      await apiPost('/api/v1/admin/prompt-templates', {
+      const body = {
         name: name.trim(),
         key: key.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-'),
         description: description.trim() || undefined,
         content: content.trim(),
-      });
-      toast.success('Template created');
+      };
+      if (editingId) {
+        await apiPut(`/api/v1/admin/prompt-templates/${editingId}`, body);
+        toast.success('Template updated');
+      } else {
+        await apiPost('/api/v1/admin/prompt-templates', body);
+        toast.success('Template created');
+      }
       setCreateOpen(false);
+      setEditingId(null);
       setName('');
       setKey('');
       setDescription('');
@@ -89,11 +106,17 @@ export function AdminPromptTemplates() {
   };
 
   const selectForEditing = (template: PromptTemplate) => {
+    setEditingId(template._id);
     setName(template.name);
     setKey(template.key);
     setDescription(template.description ?? '');
     setContent(template.content);
     setCreateOpen(true);
+  };
+
+  const closeModal = () => {
+    setCreateOpen(false);
+    setEditingId(null);
   };
 
   return (
@@ -104,7 +127,7 @@ export function AdminPromptTemplates() {
           <span className="text-sm text-muted">Personas and instructions for the assistant</span>
         </div>
         <div className="page-header-actions">
-          <Button onClick={() => setCreateOpen(true)}><FaPlus /> New template</Button>
+          <Button onClick={openCreate}><FaPlus /> New template</Button>
         </div>
       </div>
 
@@ -167,8 +190,8 @@ export function AdminPromptTemplates() {
         </div>
       )}
 
-      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Prompt template">
-        <form onSubmit={(e) => void create(e)}>
+      <Modal open={createOpen} onClose={closeModal} title={editingId ? 'Edit prompt template' : 'Prompt template'}>
+        <form onSubmit={(e) => void save(e)}>
           <Field label="Name" hint="e.g. Campus Guide">
             <Input required value={name} onChange={(e) => setName(e.target.value)} />
           </Field>
@@ -187,8 +210,8 @@ export function AdminPromptTemplates() {
             <Textarea required value={content} onChange={(e) => setContent(e.target.value)} rows={7} />
           </Field>
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="secondary" onClick={() => setCreateOpen(false)}>Cancel</Button>
-            <Button type="submit" loading={saving}>Save template</Button>
+            <Button type="button" variant="secondary" onClick={closeModal}>Cancel</Button>
+            <Button type="submit" loading={saving}>{editingId ? 'Save changes' : 'Save template'}</Button>
           </div>
         </form>
       </Modal>

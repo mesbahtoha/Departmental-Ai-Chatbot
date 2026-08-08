@@ -3,6 +3,7 @@ import {
   buildPreview,
   computeKeywordScore,
   escapeRegex,
+  expandQueryForSearch,
   normalizeForSearch,
   normalizeText,
 } from '../utils/text.utils';
@@ -31,6 +32,21 @@ export interface SearchResultItem {
   fullNoticeUrl: string;
 }
 
+/**
+ * Minimum relevance score for a match to be considered a real hit.
+ * A single strong term (or an English/Bengali synonym overlap) scores
+ * well above this; pure noise scores 0.
+ */
+export const RELEVANCE_THRESHOLD = 4;
+
+/** Builds one alternation regex from the query + academic synonyms. */
+function buildSearchRegex(query: string): RegExp {
+  const terms = expandQueryForSearch(query);
+  if (!terms.length) return /$^/; // never matches
+  const escaped = terms.map((term) => escapeRegex(term));
+  return new RegExp(`(${escaped.join('|')})`, 'i');
+}
+
 async function keywordSearchDocuments(
   query: string,
   category: string,
@@ -39,7 +55,7 @@ async function keywordSearchDocuments(
   const cleanQuery = normalizeText(query);
   if (!cleanQuery) return [];
 
-  const regex = new RegExp(escapeRegex(cleanQuery), 'i');
+  const regex = buildSearchRegex(query);
   const filter = category ? { category } : {};
   const results: Array<Record<string, unknown>> = [];
 
@@ -67,7 +83,9 @@ async function keywordSearchDocuments(
     // text index may not be ready - fall through to regex search
   }
 
-  // Regex fallback (matches legacy behavior exactly)
+  // Token-based regex search: any query term (or synonym) may match, and
+  // results are ranked by overlap score. Handles natural-language questions
+  // that don't contain the exact phrase from the document.
   const regexResults = (await noticeRepository.rawRegexFind(
     {
       ...filter,
@@ -77,16 +95,16 @@ async function keywordSearchDocuments(
       title: 1, category: 1, type: 1, fileId: 1, mimeType: 1, rawText: 1,
       summary: 1, createdAt: 1,
     },
-    limit * 2
+    limit * 3
   )) as Array<Record<string, unknown>>;
 
   for (const doc of regexResults) {
-    const titleScore = computeKeywordScore(doc.title || '', cleanQuery) * 1.6;
-    const textScore = computeKeywordScore(String(doc.rawText || '').slice(0, 4000), cleanQuery);
+    const titleScore = computeKeywordScore(doc.title || '', query) * 1.6;
+    const textScore = computeKeywordScore(String(doc.rawText || '').slice(0, 8000), query);
     results.push({
       ...doc,
       searchMode: 'keyword-regex',
-      relevanceScore: titleScore + textScore + 25,
+      relevanceScore: titleScore + textScore + 5,
       preview: (doc.summary as string) || buildPreview(doc.rawText || ''),
     });
   }
@@ -114,7 +132,7 @@ async function searchChunks(
   const cleanQuery = normalizeText(query);
   if (!cleanQuery) return [];
 
-  const regex = new RegExp(escapeRegex(cleanQuery), 'i');
+  const regex = buildSearchRegex(query);
   const filter = category ? { category } : {};
 
   const chunks = (await chunkRepository.rawRegexFind(
@@ -132,9 +150,9 @@ async function searchChunks(
     .map((chunk) => ({
       ...chunk,
       relevanceScore:
-        computeKeywordScore(chunk.title || '', cleanQuery) * 1.5 +
-        computeKeywordScore(chunk.chunkText || '', cleanQuery) +
-        10,
+        computeKeywordScore(chunk.title || '', query) * 1.5 +
+        computeKeywordScore(chunk.chunkText || '', query) +
+        3,
     }))
     .sort((a, b) => (b.relevanceScore as number) - (a.relevanceScore as number))
     .slice(0, limit);
