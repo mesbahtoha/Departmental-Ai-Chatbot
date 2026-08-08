@@ -19,15 +19,18 @@ function EmptyChatHero() {
     <div className="flex flex-col items-center justify-center" style={{ minHeight: '100%', padding: '48px 24px', textAlign: 'center' }}>
       <div
         className="flex items-center justify-center"
-        style={{ width: 64, height: 64, borderRadius: 20, background: 'var(--color-primary)', color: '#fff', fontSize: 30, marginBottom: 20 }}
+        style={{ width: 64, height: 64, borderRadius: 20, background: 'var(--color-primary)', color: '#fff', fontSize: 30, marginBottom: 16 }}
       >
         <FaRobot />
       </div>
+      <div className="font-bold" style={{ fontSize: 15, marginBottom: 8, color: 'var(--color-primary)' }}>
+        🤖 NoticeFlow AI
+      </div>
       <h1 className="text-2xl font-bold" style={{ marginBottom: 8 }}>
-        Ask anything — from exams to everyday questions
+        What can I help you with?
       </h1>
       <p className="text-muted" style={{ maxWidth: 480, marginBottom: 0 }}>
-        A general-purpose AI assistant with verified university notice answers. Ask about notices, routines, exams — or anything else: math, code, writing, and more.
+        Ask anything about your university, or explore any topic with AI.
       </p>
     </div>
   );

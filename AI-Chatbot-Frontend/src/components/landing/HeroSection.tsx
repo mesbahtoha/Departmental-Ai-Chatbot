@@ -12,15 +12,15 @@ export function HeroSection() {
     <section className="landing-hero" aria-labelledby="landing-hero-title">
       <BackgroundFX />
       <div className="container hero-inner">
-        <span className="hero-eyebrow fade-in-up">AI-powered campus assistant</span>
+        <span className="hero-eyebrow fade-in-up">NoticeFlow AI</span>
         <h1 id="landing-hero-title" className="hero-title fade-in-up" style={{ animationDelay: '0.08s' }}>
-          The smartest way to search
+          The smarter way to ask, learn
           <br />
-          your <span className="gradient-text">campus notices</span>
+          &amp; <span className="gradient-text">get things done</span>
         </h1>
         <p className="hero-subtitle fade-in-up" style={{ animationDelay: '0.16s' }}>
-          Get instant AI-powered answers from uploaded university notices, exam routines, admission
-          circulars, fees, scholarships, and more—with verified sources.
+          An AI-powered assistant for university notices, documents, study, coding, writing, and
+          everyday questions—with verified sources when available.
         </p>
         <div className="hero-cta-row fade-in-up" style={{ animationDelay: '0.24s' }}>
           <Button size="lg" className="btn-pill btn-glow" onClick={() => navigate('/register')}>

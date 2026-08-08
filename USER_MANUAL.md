@@ -1,6 +1,6 @@
-# NoticeFlow — User Manual
+# NoticeFlow AI — User Manual
 
-This manual explains how to use the **NoticeFlow** AI chatbot, covering both the **User Panel** (regular accounts) and the **Admin Panel** (dashboard and all administrative features).
+This manual explains how to use the **NoticeFlow AI** chatbot, covering both the **User Panel** (regular accounts) and the **Admin Panel** (dashboard and all administrative features).
 
 > Two kinds of accounts exist:
 >

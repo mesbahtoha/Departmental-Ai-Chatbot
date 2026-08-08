@@ -1,6 +1,6 @@
-# NoticeFlow — AI Chatbot for Campus Notices
+# NoticeFlow AI — AI Chatbot for Campus Notices
 
-A production-ready AI chatbot that answers questions from uploaded university notices (exam routines, results, fees, admission circulars, scholarships, and more) with **verified sources**. Built with a TypeScript Express + MongoDB backend and a React + Vite frontend.
+The smarter way to ask, learn & get things done. An AI-powered assistant for university notices, documents, study, coding, writing, and everyday questions—with verified sources when available. Built with a TypeScript Express + MongoDB backend and a React + Vite frontend.
 
 > Users chat in English, Bangla, or Banglish; the assistant streams answers token-by-token and cites the exact notice documents it used.
 
