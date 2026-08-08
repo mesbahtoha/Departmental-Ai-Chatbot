@@ -23,9 +23,9 @@ function EmptyChatHero() {
       >
         <FaRobot />
       </div>
-      <div className="font-bold" style={{ fontSize: 15, marginBottom: 8, color: 'var(--color-primary)' }}>
-        🤖 NoticeFlow AI
-      </div>
+      {/* <div className="font-bold" style={{ fontSize: 15, marginBottom: 8, color: 'var(--color-primary)' }}>
+         NoticeFlow AI
+      </div> */}
       <h1 className="text-2xl font-bold" style={{ marginBottom: 8 }}>
         What can I help you with?
       </h1>
