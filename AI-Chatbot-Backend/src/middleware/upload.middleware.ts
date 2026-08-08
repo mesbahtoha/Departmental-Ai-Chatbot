@@ -18,6 +18,27 @@ const AVATAR_ALLOWED = [
   'image/bmp',
 ];
 
+/** Images (.jpg/.jpeg/.png/.webp) and PDF documents for temporary chat attachments. */
+const CHAT_ATTACHMENT_ALLOWED_EXT = ['.jpg', '.jpeg', '.png', '.webp', '.pdf'];
+const CHAT_ATTACHMENT_ALLOWED_MIME = new Set([
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+]);
+
+const chatAttachmentFilter: multer.Options['fileFilter'] = (req, file, cb) => {
+  const ext = file.originalname.split('.').pop()?.toLowerCase() ?? '';
+  if (
+    CHAT_ATTACHMENT_ALLOWED_MIME.has(file.mimetype) &&
+    CHAT_ATTACHMENT_ALLOWED_EXT.includes(`.${ext}`)
+  ) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only images (.jpg, .jpeg, .png, .webp) and PDF (.pdf) files are allowed'));
+  }
+};
+
 const noticeFileFilter: multer.Options['fileFilter'] = (req, file, cb) => {
   if (NOTICE_ALLOWED.includes(file.mimetype)) {
     cb(null, true);
@@ -46,4 +67,14 @@ export const uploadAvatar = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: avatarFileFilter,
+});
+
+/** Multipart upload for temporary chat attachments (memory only). */
+export const uploadChatAttachments = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024,
+    files: 5,
+  },
+  fileFilter: chatAttachmentFilter,
 });

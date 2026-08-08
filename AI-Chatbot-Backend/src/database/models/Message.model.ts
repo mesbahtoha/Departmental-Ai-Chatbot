@@ -29,6 +29,13 @@ const messageSchema = new Schema(
     feedback: { type: String, enum: ['like', 'dislike', null], default: null },
     feedbackComment: { type: String, default: '' },
     errorMessage: { type: String, default: null },
+    /**
+     * Metadata only for attachments attached to a user message
+     * ({ id, name, type, mimeType, size }). The actual file bytes are never
+     * persisted - they live in temporary memory and are deleted after the
+     * AI response is generated.
+     */
+    attachments: { type: [mongoose.Schema.Types.Mixed], default: [] },
   },
   { timestamps: true, collection: 'messages' }
 );

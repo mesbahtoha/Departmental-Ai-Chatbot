@@ -3,8 +3,8 @@ import toast from 'react-hot-toast';
 import { getErrorMessage, streamPost } from '@/lib/api';
 import { useChatStore } from '@/store/chat.store';
 import { useAuthStore } from '@/store/auth.store';
-import { getLanguagePreference } from '@/components/chat/ChatComposer';
-import type { ChatMessage, Citation, Source } from '@/types';
+import { getLanguagePreference, getModePreference } from '@/components/chat/ChatComposer';
+import type { AIMode, ChatAttachment, ChatMessage, Citation, Source } from '@/types';
 
 let tempCounter = 0;
 function tempId(prefix = 'tmp'): string {
@@ -144,14 +144,29 @@ export function useChatSession(conversationId: string) {
   );
 
   const sendMessage = useCallback(
-    (content: string, language?: string) => {
-      const userMessage = makeLocalMessage(conversationId, 'user', content);
+    (content: string, options?: { language?: string; mode?: AIMode; attachments?: ChatAttachment[] }) => {
+      const userMessage = makeLocalMessage(conversationId, 'user', content, {
+        attachments: options?.attachments ?? [],
+      });
       const assistantMessage = makeLocalMessage(conversationId, 'assistant', '', {
         status: 'pending',
       });
       void handleStream(
         `/api/v1/conversations/${conversationId}/messages`,
-        { content, language: language || getLanguagePreference() },
+        {
+          content,
+          language: options?.language || getLanguagePreference(),
+          ...(options?.mode ? { mode: options.mode } : {}),
+          ...(options?.attachments?.length
+            ? {
+                attachments: options.attachments.map((attachment) => ({
+                  id: attachment.id,
+                  type: attachment.type,
+                  name: attachment.name,
+                })),
+              }
+            : {}),
+        },
         { userMessage, assistantMessage }
       );
     },
@@ -165,7 +180,7 @@ export function useChatSession(conversationId: string) {
       if (!existing || existing.role !== 'assistant') return;
       void handleStream(
         `/api/v1/conversations/${conversationId}/regenerate`,
-        { messageId, language: getLanguagePreference() },
+        { messageId, language: getLanguagePreference(), mode: getModePreference() },
         { assistantMessage: existing, targetId: existing._id }
       );
     },
@@ -176,7 +191,7 @@ export function useChatSession(conversationId: string) {
     const assistantMessage = makeLocalMessage(conversationId, 'assistant', '', { status: 'pending' });
     void handleStream(
       `/api/v1/conversations/${conversationId}/continue`,
-      { language: getLanguagePreference() },
+      { language: getLanguagePreference(), mode: getModePreference() },
       { assistantMessage }
     );
   }, [conversationId, handleStream]);

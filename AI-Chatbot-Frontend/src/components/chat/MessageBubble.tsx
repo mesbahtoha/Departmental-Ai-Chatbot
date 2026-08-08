@@ -69,6 +69,19 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
           {isUser ? 'You' : 'Assistant'}
         </div>
 
+        {message.attachments && message.attachments.length > 0 && (
+          <div className="message-attachments">
+            {message.attachments.map((attachment) => (
+              <span className="message-attachment-chip" key={attachment.id} title={attachment.name}>
+                <span className="message-attachment-chip-icon">
+                  {attachment.type === 'image' ? '🖼️' : '📄'}
+                </span>
+                <span className="message-attachment-chip-name">{attachment.name}</span>
+              </span>
+            ))}
+          </div>
+        )}
+
         <MarkdownRenderer content={message.content} streaming={streaming} />
 
         {message.status === 'error' && (

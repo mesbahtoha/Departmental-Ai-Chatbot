@@ -14,6 +14,8 @@ export interface PreparedStream {
   userMessage: MessageDocument | null;
   assistantMessage: MessageDocument;
   openRouterMessages: ChatMessageInput[];
+  model: string;
+  attachmentIds: string[];
   estimatedPromptTokens: number;
   context?: {
     searchResults: unknown[];
@@ -34,13 +36,15 @@ interface MessageLike {
 export const messageService = {
   /**
    * Persists a user message, sets the conversation title on first message,
-   * and prepares the OpenRouter payload (history + RAG context).
+   * and prepares the OpenRouter payload (history + RAG context + attachments).
    */
   async prepareNewMessage(input: {
     conversationId: string;
     userId: string;
     content: string;
     language?: string;
+    mode?: 'fast' | 'balanced' | 'accurate';
+    attachments?: Array<{ id: string; type: 'image' | 'pdf'; name?: string }>;
   }): Promise<PreparedStream> {
     const conversation = await conversationRepository.findOwned(
       input.conversationId,
@@ -58,6 +62,7 @@ export const messageService = {
       userId: new Types.ObjectId(input.userId),
       role: 'user',
       content: input.content,
+      attachments: input.attachments ?? [],
     });
 
     await conversationRepository.touchLastMessage(conversation._id, 1);
@@ -72,10 +77,13 @@ export const messageService = {
 
     const history = await this.getHistory(conversation._id, userMessage._id);
 
-    const { messages, context } = await aiService.buildChatMessages({
+    const { messages, model, attachmentIds, context } = await aiService.buildChatMessages({
       userContent: input.content,
       history,
       language: input.language,
+      mode: input.mode,
+      attachments: input.attachments,
+      userId: input.userId,
     });
 
     const assistantMessage = await messageRepository.create({
@@ -91,6 +99,8 @@ export const messageService = {
       userMessage,
       assistantMessage,
       openRouterMessages: messages,
+      model,
+      attachmentIds: attachmentIds ?? [],
       estimatedPromptTokens: estimateTokens(JSON.stringify(messages)),
       context,
     };
@@ -105,6 +115,7 @@ export const messageService = {
     userId: string;
     messageId: string;
     language?: string;
+    mode?: 'fast' | 'balanced' | 'accurate';
   }): Promise<PreparedStream> {
     const conversation = await conversationRepository.findOwned(
       input.conversationId,
@@ -149,15 +160,25 @@ export const messageService = {
       throw error;
     }
 
+    // Re-attach files from the original message (metadata was persisted; the
+    // bytes live in temporary memory and are still valid while regeneration
+    // happens within the TTL window).
+    const storedAttachments = ((userMessage as unknown as { attachments?: Array<{ id: string; type: 'image' | 'pdf' }> }).attachments ?? []).filter(
+      (attachment) => attachment?.id && (attachment.type === 'image' || attachment.type === 'pdf')
+    );
+
     // Remove the assistant message and everything after it.
     await messageRepository.deleteAfter(conversation._id, target.createdAt);
 
     const history = await this.getHistory(conversation._id, userMessage._id);
 
-    const { messages, context } = await aiService.buildChatMessages({
+    const { messages, model, attachmentIds, context } = await aiService.buildChatMessages({
       userContent: userMessage.content,
       history,
       language: input.language,
+      mode: input.mode,
+      attachments: storedAttachments,
+      userId: input.userId,
     });
 
     const assistantMessage = await messageRepository.create({
@@ -173,6 +194,8 @@ export const messageService = {
       userMessage: null,
       assistantMessage,
       openRouterMessages: messages,
+      model,
+      attachmentIds: attachmentIds ?? [],
       estimatedPromptTokens: estimateTokens(JSON.stringify(messages)),
       context,
     };
@@ -183,6 +206,7 @@ export const messageService = {
     conversationId: string;
     userId: string;
     language?: string;
+    mode?: 'fast' | 'balanced' | 'accurate';
   }): Promise<PreparedStream> {
     const conversation = await conversationRepository.findOwned(
       input.conversationId,
@@ -203,10 +227,12 @@ export const messageService = {
 
     const history = await this.getHistory(conversation._id);
 
-    const { messages, context } = await aiService.buildChatMessages({
+    const { messages, model, attachmentIds, context } = await aiService.buildChatMessages({
       userContent: 'Please continue generating your previous response exactly from where you left off.',
       history,
       language: input.language,
+      mode: input.mode,
+      userId: input.userId,
     });
 
     const assistantMessage = await messageRepository.create({
@@ -222,6 +248,8 @@ export const messageService = {
       userMessage: null,
       assistantMessage,
       openRouterMessages: messages,
+      model,
+      attachmentIds: attachmentIds ?? [],
       estimatedPromptTokens: estimateTokens(JSON.stringify(messages)),
       context,
     };

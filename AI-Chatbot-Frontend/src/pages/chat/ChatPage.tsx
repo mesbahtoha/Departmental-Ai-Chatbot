@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { FaRobot } from 'react-icons/fa';
-import { MdDelete, MdEdit, MdLink, MdDownload, MdPushPin } from 'react-icons/md';
+import { MdDelete, MdEdit, MdLink, MdDownload, MdPushPin, MdKeyboardArrowDown } from 'react-icons/md';
 import toast from 'react-hot-toast';
 import { useChatStore } from '@/store/chat.store';
 import { useChatSession } from '@/hooks/useChatSession';
 import { MessageBubble } from '@/components/chat/MessageBubble';
-import { ChatComposer } from '@/components/chat/ChatComposer';
+import { ChatComposer, ComposerSendPayload } from '@/components/chat/ChatComposer';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Form';
@@ -24,11 +24,10 @@ function EmptyChatHero() {
         <FaRobot />
       </div>
       <h1 className="text-2xl font-bold" style={{ marginBottom: 8 }}>
-        Ask anything about your department and notices
+        Ask anything — from exams to everyday questions
       </h1>
-      <p className="text-muted" style={{ maxWidth: 460, marginBottom: 0 }}>
-        {/* Instant answers from uploaded notices — exam routines, results, fees, admission and more. */}
-        Get instant AI-powered answers from uploaded university notices, exam routines, admission circulars, fees, scholarships, and more—with verified sources.
+      <p className="text-muted" style={{ maxWidth: 480, marginBottom: 0 }}>
+        A general-purpose AI assistant with verified university notice answers. Ask about notices, routines, exams — or anything else: math, code, writing, and more.
       </p>
     </div>
   );
@@ -47,9 +46,27 @@ export function ChatPage() {
   const [loading, setLoading] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameValue, setRenameValue] = useState('');
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const atBottomRef = useRef(true);
 
   const session = useChatSession(id ?? '');
+
+  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior });
+    atBottomRef.current = true;
+    setShowScrollBtn(false);
+  };
+
+  const handleScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    atBottomRef.current = nearBottom;
+    setShowScrollBtn(!nearBottom);
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -98,9 +115,19 @@ export function ChatPage() {
     };
   }, [id, loadConversations, createConversation, navigate]);
 
+  // Follow the conversation while the user is at the bottom (keeps streaming
+  // smooth); once they scroll up, stop auto-scrolling until they return.
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (atBottomRef.current) {
+      const el = scrollRef.current;
+      if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    }
   }, [current?.messages.length, current?.messages[current?.messages.length - 1]?.content]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [id]);
 
   if (loading || !current || current.conversation._id !== id) {
     return <ChatSkeleton />;
@@ -187,7 +214,12 @@ export function ChatPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto scroll-thin chat-scroll" style={{ minHeight: 0 }}>
+      <div
+        className="flex-1 overflow-y-auto scroll-thin chat-scroll"
+        style={{ minHeight: 0, position: 'relative' }}
+        ref={scrollRef}
+        onScroll={handleScroll}
+      >
         <div style={{ maxWidth: 860, margin: '0 auto' }}>
           {messages.length === 0 ? (
             <EmptyChatHero />
@@ -196,15 +228,33 @@ export function ChatPage() {
               <MessageBubble key={message._id} message={message} />
             ))
           )}
-          <div ref={messagesEndRef} />
         </div>
       </div>
 
-      <ChatComposer
-        onSend={(content, language) => session.sendMessage(content, language)}
-        isStreaming={isStreaming}
-        onStop={session.stop}
-      />
+      <div className="chat-composer-wrap">
+        {showScrollBtn && (
+          <button
+            className="scroll-bottom-btn"
+            onClick={() => scrollToBottom('smooth')}
+            title="Scroll to latest message"
+            aria-label="Scroll to latest message"
+          >
+            <MdKeyboardArrowDown size={22} />
+          </button>
+        )}
+
+        <ChatComposer
+          onSend={(payload: ComposerSendPayload) =>
+            session.sendMessage(payload.content, {
+              language: payload.language,
+              mode: payload.mode,
+              attachments: payload.attachments,
+            })
+          }
+          isStreaming={isStreaming}
+          onStop={session.stop}
+        />
+      </div>
 
       <Modal open={renameOpen} onClose={() => setRenameOpen(false)} title="Rename conversation">
         <Input

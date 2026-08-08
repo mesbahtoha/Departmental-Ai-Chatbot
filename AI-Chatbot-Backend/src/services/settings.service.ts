@@ -4,6 +4,8 @@ import { createTtlCache } from '../utils/cache';
 
 export interface AISettings {
   model: string;
+  modelFast: string;
+  modelAccurate: string;
   temperature: number;
   maxTokens: number;
   systemPrompt: string;
@@ -61,6 +63,8 @@ export const settingsService = {
   async getAISettings(): Promise<AISettings> {
     const values = await this.loadValues([
       'ai.model',
+      'ai.modelFast',
+      'ai.modelAccurate',
       'ai.temperature',
       'ai.maxTokens',
       'ai.systemPrompt',
@@ -71,6 +75,8 @@ export const settingsService = {
 
     return {
       model: String(values['ai.model'] || DEFAULT_SETTINGS['ai.model']),
+      modelFast: String(values['ai.modelFast'] || DEFAULT_SETTINGS['ai.modelFast']),
+      modelAccurate: String(values['ai.modelAccurate'] || DEFAULT_SETTINGS['ai.modelAccurate']),
       temperature: Number(values['ai.temperature'] ?? 0.15),
       maxTokens: Number(values['ai.maxTokens'] ?? 700),
       systemPrompt: String(values['ai.systemPrompt'] ?? ''),
@@ -82,12 +88,35 @@ export const settingsService = {
 
   async getAllForAdmin(): Promise<Array<{ key: string; value: unknown; group: string; description: string }>> {
     const docs = await settingRepository.getAll();
-    return docs.map((doc) => ({
-      key: doc.key,
-      value: doc.value,
-      group: doc.group,
-      description: doc.description,
-    }));
+
+    // Merge defaults so newly added keys (e.g. ai.modelFast) appear in the
+    // admin panel even on databases seeded before the key existed.
+    const byKey = new Map(docs.map((doc) => [doc.key, doc]));
+    const merged = new Map<string, { key: string; value: unknown; group: string; description: string }>();
+
+    for (const [key, value] of Object.entries(DEFAULT_SETTINGS)) {
+      const doc = byKey.get(key);
+      merged.set(key, {
+        key,
+        value: doc ? doc.value : value,
+        group: doc?.group || key.split('.')[0],
+        description: doc?.description || '',
+      });
+    }
+
+    // Keep any extra non-default keys already stored in the DB.
+    for (const doc of docs) {
+      if (!merged.has(doc.key)) {
+        merged.set(doc.key, {
+          key: doc.key,
+          value: doc.value,
+          group: doc.group,
+          description: doc.description,
+        });
+      }
+    }
+
+    return Array.from(merged.values());
   },
 
   async updateMany(entries: Array<{ key: string; value: unknown }>): Promise<void> {

@@ -66,16 +66,18 @@ function Editor({
     );
   }
 
-  if (key === 'ai.model') {
+  if (key === 'ai.model' || key === 'ai.modelFast' || key === 'ai.modelAccurate') {
     return (
       <Select value={String(current)} onChange={(e) => onChange(e.target.value)}>
         <option value="google/gemini-2.5-flash-lite">google/gemini-2.5-flash-lite</option>
+        <option value="google/gemini-2.5-flash">google/gemini-2.5-flash</option>
         <option value="google/gemini-2.5-pro">google/gemini-2.5-pro</option>
         <option value="openai/gpt-4o-mini">openai/gpt-4o-mini</option>
         <option value="openai/gpt-4o">openai/gpt-4o</option>
         <option value="anthropic/claude-3-5-sonnet">anthropic/claude-3-5-sonnet</option>
         <option value="meta-llama/llama-3.3-70b-instruct">meta-llama/llama-3.3-70b-instruct</option>
         <option value="deepseek/deepseek-chat">deepseek/deepseek-chat</option>
+        <option value="deepseek/deepseek-reasoner">deepseek/deepseek-reasoner</option>
       </Select>
     );
   }

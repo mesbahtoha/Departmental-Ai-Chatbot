@@ -125,6 +125,16 @@ export async function apiPatch<T>(url: string, body?: unknown, config?: AxiosReq
   return data as T;
 }
 
+/** Multipart upload (FormData). The auth interceptor adds the bearer token. */
+export async function apiUpload<T>(url: string, formData: FormData, config?: AxiosRequestConfig): Promise<T> {
+  const { data } = await api.post(url, formData, {
+    ...config,
+    headers: { 'Content-Type': 'multipart/form-data', ...config?.headers },
+    timeout: 120000,
+  });
+  return data as T;
+}
+
 export async function apiDelete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
   const { data } = await api.delete(url, config);
   return data as T;

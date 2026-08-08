@@ -4,6 +4,7 @@ import { asyncHandler, fail } from '../../../utils/response.utils';
 import messageService from './message.service';
 import OpenRouterClient, { OpenRouterStreamChunk } from '../../../services/openrouter.client';
 import quotaService from '../../../services/quota.service';
+import { deleteChatAttachments } from '../../../services/attachment.service';
 import { estimateCostUsd, estimateTokens } from '../../../utils/text.utils';
 import { log } from '../../../config/logger';
 
@@ -92,6 +93,7 @@ async function streamAiResponse(
 
     for await (const chunk of OpenRouterClient.stream(prepared.openRouterMessages, {
       signal: abortController.signal,
+      model: prepared.model || undefined,
     })) {
       if (chunk.type === 'token' && chunk.content) {
         content += chunk.content;
@@ -129,8 +131,7 @@ async function streamAiResponse(
       totalTokens = promptTokens + completionTokens;
     }
 
-    const aiSettings = await (await import('../../../services/settings.service')).settingsService.getAISettings();
-    model = aiSettings.model;
+    model = prepared.model || model;
 
     const stopped = abortController.signal.aborted;
     const status = stopped ? 'stopped' : 'complete';
@@ -196,6 +197,11 @@ async function streamAiResponse(
     }
     writeEvent(res, { type: 'done', messageId: String(assistantId), status: stopped ? 'stopped' : 'error' });
   } finally {
+    // Temporary attachments are single-use: free their memory as soon as the
+    // response finishes (success, error, or aborted). Nothing is stored.
+    if (prepared.attachmentIds.length) {
+      deleteChatAttachments(prepared.attachmentIds, userId);
+    }
     res.removeListener('close', onClose);
     res.end();
   }
@@ -205,13 +211,15 @@ export const messageController = {
   /** Sends a message and streams the assistant's reply (SSE). */
   sendMessage: asyncHandler(async (req: Request, res: Response) => {
     const { conversationId } = req.params;
-    const { content, language } = req.body;
+    const { content, language, mode, attachments } = req.body;
 
     const prepared = await messageService.prepareNewMessage({
       conversationId,
       userId: req.user!.id,
       content,
       language,
+      mode,
+      attachments,
     });
 
     await quotaService.assertCanUseAI(req.user!.id, prepared.estimatedPromptTokens);
@@ -222,13 +230,14 @@ export const messageController = {
   /** Regenerates a previous assistant response (SSE). */
   regenerate: asyncHandler(async (req: Request, res: Response) => {
     const { conversationId } = req.params;
-    const { messageId, language } = req.body;
+    const { messageId, language, mode } = req.body;
 
     const prepared = await messageService.prepareRegenerate({
       conversationId,
       userId: req.user!.id,
       messageId,
       language,
+      mode,
     });
 
     await quotaService.assertCanUseAI(req.user!.id, prepared.estimatedPromptTokens);
@@ -239,12 +248,13 @@ export const messageController = {
   /** Continues the last assistant response (SSE). */
   continue: asyncHandler(async (req: Request, res: Response) => {
     const { conversationId } = req.params;
-    const { language } = req.body;
+    const { language, mode } = req.body;
 
     const prepared = await messageService.prepareContinue({
       conversationId,
       userId: req.user!.id,
       language,
+      mode,
     });
 
     await quotaService.assertCanUseAI(req.user!.id, prepared.estimatedPromptTokens);

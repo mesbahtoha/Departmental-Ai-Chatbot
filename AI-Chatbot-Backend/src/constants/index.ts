@@ -59,6 +59,8 @@ export const DEFAULT_SETTINGS = {
   'app.tagline': 'Ask anything. Get instant answers.',
   'app.allowRegistration': true,
   'ai.model': 'google/gemini-2.5-flash-lite',
+  'ai.modelFast': 'google/gemini-2.5-flash-lite',
+  'ai.modelAccurate': 'google/gemini-2.5-pro',
   'ai.temperature': 0.15,
   'ai.maxTokens': 700,
   'ai.systemPrompt': '',
@@ -67,6 +69,21 @@ export const DEFAULT_SETTINGS = {
   'ai.openRouterApiKey': '',
   'ui.showTokenUsage': true,
   'ui.showSuggestedPrompts': true,
+} as const;
+
+/**
+ * AI response modes selectable from the chat composer.
+ * 'balanced' always uses the admin-configured default model (ai.model) so
+ * existing deployments keep their current behavior.
+ */
+export const AI_MODES = ['fast', 'balanced', 'accurate'] as const;
+export type AIMode = (typeof AI_MODES)[number];
+
+/** Temporary chat attachments (upload -> analyze -> answer -> discard). */
+export const CHAT_ATTACHMENT_LIMITS = {
+  maxSizeBytes: 10 * 1024 * 1024,
+  maxFilesPerMessage: 5,
+  ttlMs: 30 * 60 * 1000,
 } as const;
 
 export type SettingKey = keyof typeof DEFAULT_SETTINGS;

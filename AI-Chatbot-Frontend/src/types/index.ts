@@ -89,6 +89,18 @@ export interface Source {
 export type MessageRole = 'user' | 'assistant' | 'system';
 export type MessageStatus = 'pending' | 'streaming' | 'complete' | 'stopped' | 'error';
 
+/** Metadata for a temporary chat attachment (bytes are never persisted). */
+export interface ChatAttachment {
+  id: string;
+  name: string;
+  type: 'image' | 'pdf';
+  mimeType: string;
+  size: number;
+  createdAt?: number;
+}
+
+export type AIMode = 'fast' | 'balanced' | 'accurate';
+
 export interface MessageFeedback {
   type: 'like' | 'dislike';
   comment?: string;
@@ -107,6 +119,7 @@ export interface ChatMessage {
   totalTokens?: number;
   citations?: Citation[];
   sources?: Source[];
+  attachments?: ChatAttachment[];
   feedback?: MessageFeedback | null;
   createdAt: string;
   updatedAt: string;

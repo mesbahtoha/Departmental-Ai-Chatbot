@@ -11,6 +11,7 @@ export interface CreateMessageData {
   sources?: unknown[];
   citations?: unknown[];
   confidence?: 'high' | 'medium' | 'low';
+  attachments?: unknown[];
 }
 
 /**
@@ -42,13 +43,14 @@ export const messageRepository = {
       sources: data.sources || [],
       citations: data.citations || [],
       confidence: data.confidence || 'medium',
+      attachments: data.attachments || [],
     });
   },
 
   async update(
     id: string | Types.ObjectId,
     data: Partial<
-      Pick<MessageDocument, 'content' | 'status' | 'model' | 'promptTokens' | 'completionTokens' | 'totalTokens' | 'feedback' | 'feedbackComment' | 'errorMessage' | 'sources' | 'citations' | 'confidence'>
+      Pick<MessageDocument, 'content' | 'status' | 'model' | 'promptTokens' | 'completionTokens' | 'totalTokens' | 'feedback' | 'feedbackComment' | 'errorMessage' | 'sources' | 'citations' | 'confidence' | 'attachments'>
     >
   ): Promise<MessageDocument | null> {
     return MessageModel.findByIdAndUpdate(id, { $set: data }, { new: true });

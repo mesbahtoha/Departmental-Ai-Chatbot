@@ -1,9 +1,11 @@
 import OpenRouterClient, { ChatMessageInput } from './openrouter.client';
 import { searchNotices, getTopContextChunks, buildCitationsFromChunks, attachNoticeMeta, SearchResultItem } from './search.service';
+import { readChatAttachments, deleteChatAttachments, ChatAttachmentType } from './attachment.service';
 import { ChatLogModel } from '../database/models/ChatLog.model';
 import { PromptTemplateModel } from '../database/models/PromptTemplate.model';
 import { settingsService } from './settings.service';
 import { createTtlCache } from '../utils/cache';
+import pdfParse from 'pdf-parse';
 import {
   buildPreview,
   detectLanguage,
@@ -283,6 +285,7 @@ ${combinedContext}
    * Builds the message array for the v1 streaming chat:
    * - active prompt templates + configured system prompt
    * - optional notice RAG context when the search finds matches
+   * - optional uploaded file content (images / PDF text)
    * - recent conversation history
    */
   async buildChatMessages(input: {
@@ -290,12 +293,41 @@ ${combinedContext}
     history: Array<{ role: 'user' | 'assistant'; content: string }>;
     includeRagContext?: boolean;
     language?: string;
-  }): Promise<{ messages: ChatMessageInput[]; context?: { searchResults: SearchResultItem[]; citations: Array<Record<string, unknown>> } }> {
+    mode?: 'fast' | 'balanced' | 'accurate';
+    attachments?: Array<{ id: string; type: ChatAttachmentType; name?: string }>;
+    userId?: string;
+  }): Promise<{
+    messages: ChatMessageInput[];
+    model: string;
+    attachmentIds?: string[];
+    context?: { searchResults: SearchResultItem[]; citations: Array<Record<string, unknown>> };
+  }> {
     const aiSettings = await settingsService.getAISettings();
+
+    const model =
+      input.mode === 'fast'
+        ? aiSettings.modelFast
+        : input.mode === 'accurate'
+          ? aiSettings.modelAccurate
+          : aiSettings.model;
 
     const templates = await getActiveTemplates();
 
     const systemParts: string[] = [];
+
+    systemParts.push(
+      'You are NoticeFlow, a general-purpose AI assistant inside a university department app. ' +
+        'Answer questions from any topic - mathematics, physics, programming, web development, engineering, general knowledge, writing, summarization, translation, problem solving, study help - naturally and intelligently.\n' +
+        'Guidelines:\n' +
+        '- Understand conversation context and follow-up questions (pronouns like "it", "that", "this" refer to earlier topics in the conversation).\n' +
+        '- Provide structured, clear answers. Solve problems step-by-step. Explain concepts before jumping to formulas.\n' +
+        '- Use Markdown formatting (headings, lists, tables, math with $$...$$ and $...$) and code blocks when helpful.\n' +
+        '- If a user message includes an uploaded image or document, analyze it and answer about its content.\n' +
+        '- If the user asks about university matters (exams, routines, results, fees, admission, notices) and a "Notice context" section is provided, answer from those notices and cite them like [Source 1].\n' +
+        '- NEVER invent university-specific facts (exam dates, results, deadlines, fees, schedules). If no notice contains the answer, say: "I couldn\'t find an official notice containing that information." then offer a general answer or ask the user to upload the relevant document.\n' +
+        '- If you do not know something, say so honestly instead of guessing.\n' +
+        '- Ask a clarifying question when the request is ambiguous.'
+    );
 
     if (aiSettings.systemPrompt) {
       systemParts.push(aiSettings.systemPrompt);
@@ -307,19 +339,18 @@ ${combinedContext}
 
     systemParts.push(buildLanguageInstruction(input.language));
 
-    if (!systemParts.length) {
-      systemParts.push(
-        'You are a helpful, accurate, and friendly AI assistant. Answer clearly, prefer concise but complete responses, and be honest when you do not know something.'
-      );
-    }
-
     // RAG context: only surface notice sources when the question is actually
-    // about notices (exams, routines, fees, scholarships, etc.).
+    // about notices (exams, routines, fees, scholarships, etc.) - or when the
+    // conversation was already grounded in notices (follow-up questions).
     let ragBlock = '';
     let citations: Array<Record<string, unknown>> = [];
     let searchResults: SearchResultItem[] = [];
 
-    if (input.includeRagContext !== false && isNoticeRelatedQuery(input.userContent)) {
+    const followUpOnNotices = input.history
+      .slice(-4)
+      .some((item) => item.role === 'assistant' && /\[source\s*\d|source \d|notice context/i.test(item.content));
+
+    if (input.includeRagContext !== false && (isNoticeRelatedQuery(input.userContent) || followUpOnNotices)) {
       searchResults = await searchNotices(input.userContent, '', 5);
       if (searchResults.length) {
         const contextChunks = await getTopContextChunks(searchResults, input.userContent, 8);
@@ -346,15 +377,84 @@ ${combinedContext}
       messages.push({ role: item.role === 'assistant' ? 'assistant' : 'user', content: item.content });
     }
 
+    // ---- Uploaded file content (temporary; deleted after the response) ----
+    const attachmentParts: Array<Record<string, unknown>> = [];
+    const attachmentIds: string[] = [];
+    const fileTextBlocks: string[] = [];
+
+    if (input.attachments?.length) {
+      const items = readChatAttachments(
+        input.attachments.map((a) => a.id),
+        input.userId || ''
+      );
+
+      for (const attachment of input.attachments) {
+        const item = items.find((candidate) => candidate.id === attachment.id);
+        if (!item) {
+          const error = new Error(
+            'This attachment is no longer available. Please attach it again before sending.'
+          ) as Error & { statusCode?: number };
+          error.statusCode = 400;
+          throw error;
+        }
+        attachmentIds.push(item.id);
+
+        if (item.type === 'image') {
+          const dataUrl = `data:${item.mimeType};base64,${item.buffer.toString('base64')}`;
+          attachmentParts.push({
+            type: 'image_url',
+            image_url: { url: dataUrl },
+          });
+        } else {
+          let extracted = '';
+          try {
+            const parsed = await pdfParse(item.buffer);
+            extracted = normalizeText(parsed.text || '');
+          } catch (error) {
+            log.warn('Chat PDF parse failed', { message: (error as Error).message });
+          }
+          if (!extracted) {
+            const error = new Error(
+              "I couldn't read this file. Please try uploading a clearer image or a valid PDF (scanned PDFs without selectable text may not be supported)."
+            ) as Error & { statusCode?: number };
+            error.statusCode = 422;
+            throw error;
+          }
+          fileTextBlocks.push(`Attached document "${item.name}":\n${extracted}`);
+        }
+      }
+    }
+
     const userParts: string[] = [input.userContent];
 
     if (ragBlock) {
       userParts.push(`\n\nNotice context:\n${ragBlock}`);
     }
 
-    messages.push({ role: 'user', content: userParts.join('\n') });
+    // Combine RAG + extracted document text, then attach any images so a mix
+    // of images and PDFs is analyzed together.
+    const textContent = fileTextBlocks.length
+      ? `${userParts.join('\n')}\n\n${fileTextBlocks.join('\n\n')}`
+      : userParts.join('\n');
 
-    return { messages, context: { searchResults, citations } };
+    let userMessage: ChatMessageInput;
+    if (attachmentParts.length > 0) {
+      userMessage = {
+        role: 'user',
+        content: [{ type: 'text', text: textContent }, ...attachmentParts],
+      };
+    } else {
+      userMessage = { role: 'user', content: textContent };
+    }
+
+    messages.push(userMessage);
+
+    return {
+      messages,
+      model,
+      context: { searchResults, citations },
+      ...(attachmentIds.length ? { attachmentIds } : {}),
+    };
   },
 };
 
