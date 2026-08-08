@@ -67,11 +67,6 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
       <div className="flex-1" style={{ minWidth: 0 }}>
         <div className="text-sm font-semibold mb-1">
           {isUser ? 'You' : 'Assistant'}
-          {message.model && !isUser && (
-            <span className="badge badge-muted" style={{ marginLeft: 8, fontSize: 10.5 }}>
-              {message.model}
-            </span>
-          )}
         </div>
 
         <MarkdownRenderer content={message.content} streaming={streaming} />
