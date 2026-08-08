@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'http';
 import { createApp } from '../src/app';
-import { connectDatabase } from '../src/config/db';
+import { connectDatabase, runBootJobs } from '../src/config/db';
 
 const app = createApp();
 
@@ -14,6 +14,8 @@ function ensureDatabase(): Promise<unknown> {
 export default async function handler(req: IncomingMessage, res: ServerResponse): Promise<void> {
   try {
     await ensureDatabase();
+    // Indexes + seeding run detached so cold starts never block requests.
+    runBootJobs();
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Database connection failed';
     res.statusCode = 500;

@@ -21,6 +21,10 @@ import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 export function createApp(): Express {
   const app = express();
 
+  // Vercel (and other proxies) forward the client IP via X-Forwarded-For;
+  // without this express-rate-limit throws ERR_ERL_UNEXPECTED_X_FORWARDED_FOR.
+  app.set('trust proxy', 1);
+
   app.disable('x-powered-by');
 
   // Request id (useful for log correlation)

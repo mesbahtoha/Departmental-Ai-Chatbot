@@ -5,11 +5,15 @@ import { ensureIndexes } from '../database/indexes';
 import { seedDatabase } from '../database/seeders';
 
 let isConnected = false;
-let bootJobsDone = false;
+let bootJobsStarted = false;
 
 /**
  * Establishes the MongoDB connection using Mongoose.
  * Reuses an existing connection when possible (serverless-safe).
+ *
+ * Note: index creation + seeding are intentionally NOT part of the
+ * connection hot path (they previously blocked every cold-start request
+ * and caused Vercel 504 timeouts). They run detached via runBootJobs().
  */
 export async function connectDatabase(): Promise<typeof mongoose> {
   if (isConnected && mongoose.connection.readyState === 1) {
@@ -42,17 +46,37 @@ export async function connectDatabase(): Promise<typeof mongoose> {
 
   isConnected = true;
 
-  // Index creation + seeding run once per process instance (not on every
-  // reconnect) so serverless cold starts stay fast.
-  if (!bootJobsDone) {
-    await ensureIndexes();
-    await seedDatabase();
-    bootJobsDone = true;
-  }
-
   await mongoose.connection.db?.command({ ping: 1 });
 
   return mongoose;
+}
+
+/**
+ * Runs idempotent boot jobs (index creation + default seeding) once per
+ * process instance, detached from the request path and bounded by a hard
+ * timeout so a slow MongoDB can never take a request down with it.
+ */
+export function runBootJobs(): void {
+  if (bootJobsStarted) return;
+  bootJobsStarted = true;
+
+  const job = (async () => {
+    await ensureIndexes();
+    await seedDatabase();
+    log.info('Boot jobs completed (indexes + seed)');
+  })();
+
+  Promise.race([
+    job,
+    new Promise<void>((resolve) => {
+      setTimeout(() => {
+        log.warn('Boot jobs timed out after 20s (continuing without them)');
+        resolve();
+      }, 20_000);
+    }),
+  ]).catch((error: unknown) => {
+    log.error('Boot jobs failed', { message: error instanceof Error ? error.message : String(error) });
+  });
 }
 
 /** Returns the underlying native MongoDB Db (used for GridFS + raw queries). */

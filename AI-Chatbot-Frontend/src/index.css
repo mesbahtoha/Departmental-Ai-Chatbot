@@ -1286,6 +1286,23 @@ html[data-theme='dark'] .blob {
     width: 100%;
     max-width: 340px;
   }
+  /* On narrow screens the filename/meta must get the full row width;
+     "Open Document" moves to its own full-width row. */
+  .source-card {
+    gap: 8px 10px;
+    padding: 10px;
+  }
+  .source-info {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .source-open {
+    flex: 1 1 100%;
+    width: 100%;
+    margin-top: 2px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--border-color);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1541,6 +1558,7 @@ body.drawer-open {
 .public-mobile-menu .nav-link {
   display: flex;
   align-items: center;
+  gap: 8px;
   width: 100%;
   padding: 11px 12px;
   border-radius: 10px;
@@ -1548,6 +1566,12 @@ body.drawer-open {
   font-weight: 500;
   color: var(--text-primary);
   text-decoration: none;
+  /* Buttons (e.g. the theme toggle) must not inherit UA button chrome */
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
 }
 
 .public-mobile-menu .nav-link:hover {

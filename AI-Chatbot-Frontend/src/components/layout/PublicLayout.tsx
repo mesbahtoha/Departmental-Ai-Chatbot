@@ -82,7 +82,6 @@ export function PublicLayout() {
           <Link to="/login" className="nav-link" onClick={close}>Login</Link>
           <button
             className="nav-link"
-            style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}
             onClick={() => setTheme(toggleTheme())}
           >
             {theme === 'dark' ? <MdLightMode size={18} /> : <MdDarkMode size={18} />}
