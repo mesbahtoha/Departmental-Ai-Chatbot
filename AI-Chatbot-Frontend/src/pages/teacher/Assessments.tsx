@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { listAssessments, publishAssessment, closeAssessment, deleteAssessment } from '@/lib/api-v1';
+import { CreateAssessmentModal } from '@/components/assessments/CreateAssessmentModal';
 import type { Assessment } from '@/types';
 import { getErrorMessage } from '@/lib/api';
 
@@ -74,7 +75,7 @@ export function TeacherAssessments() {
           <span className="text-sm text-muted">{total} total assessments</span>
         </div>
         <div className="page-header-actions">
-          <Button>+ New assessment</Button>
+          <CreateAssessmentModal onCreated={() => void load()} />
         </div>
       </div>
 
