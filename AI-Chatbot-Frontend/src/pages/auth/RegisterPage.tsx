@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { FaRobot } from 'react-icons/fa';
 import { MdVisibility, MdVisibilityOff } from 'react-icons/md';
@@ -12,6 +12,7 @@ import { useLang } from '@/lib/i18n';
 export function RegisterPage() {
   const register = useAuthStore((s) => s.register);
   const navigate = useNavigate();
+  const location = useLocation();
   const { lang } = useLang();
   const bn = lang === 'bn';
   const [name, setName] = useState('');
@@ -46,7 +47,8 @@ export function RegisterPage() {
     try {
       const user = await register(name.trim(), email.trim(), password);
       toast.success(bn ? `স্বাগতম, ${user.name}!` : `Welcome, ${user.name}!`);
-      navigate('/chat', { replace: true });
+      const from = (location.state as { from?: string } | null)?.from;
+      navigate(from ?? '/chat', { replace: true });
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {

@@ -12,10 +12,13 @@ import {
 import { apiUpload, getErrorMessage } from '@/lib/api';
 import { compressImage, formatBytes } from '@/lib/image';
 import { useSpeechToText } from '@/hooks/useSpeechToText';
-import { useVoiceMode } from '@/hooks/useVoiceMode';
+import { useVoiceMode, type VoiceModeExternal } from '@/hooks/useVoiceMode';
 import type { AIMode, ChatAttachment } from '@/types';
 
 export type LanguagePreference = 'auto' | 'en' | 'bn' | 'banglish';
+
+/** Composer features that can require a logged-in account. */
+export type ComposerLockedFeature = 'attachment' | 'mode' | 'language' | 'mic' | 'voice';
 
 const LANGUAGE_OPTIONS: { value: LanguagePreference; label: string }[] = [
   { value: 'auto', label: '🌐 Auto' },
@@ -78,11 +81,20 @@ export function ChatComposer({
   isStreaming,
   onStop,
   disabled,
+  locked = false,
+  onLockedAction,
+  voiceExternal,
 }: {
   onSend: (payload: ComposerSendPayload) => void;
   isStreaming: boolean;
   onStop: () => void;
   disabled?: boolean;
+  /** When true, attachment/mode/language/mic/voice clicks are intercepted. */
+  locked?: boolean;
+  /** Called instead of the feature action while `locked` is true. */
+  onLockedAction?: (feature: ComposerLockedFeature) => void;
+  /** Optional reply source for voice mode (used outside the chat store). */
+  voiceExternal?: VoiceModeExternal;
 }) {
   const [value, setValue] = useState('');
   const [language, setLanguage] = useState<LanguagePreference>(getLanguagePreference);
@@ -94,7 +106,10 @@ export function ChatComposer({
   draftsRef.current = drafts;
 
   const mic = useSpeechToText();
-  const voice = useVoiceMode({ onSend: (text) => performSend(text, []) });
+  const voice = useVoiceMode({
+    onSend: (text) => performSend(text, []),
+    external: voiceExternal,
+  });
 
   useEffect(() => {
     return () => {
@@ -103,6 +118,21 @@ export function ChatComposer({
       }
     };
   }, []);
+
+  // If the account is lost or the composer becomes locked, stop any active
+  // capture and discard pending, account-only attachments.
+  useEffect(() => {
+    if (!locked) return;
+    if (mic.state === 'recording') mic.stop();
+    if (voice.active) voice.stop();
+    if (draftsRef.current.length) {
+      for (const draft of draftsRef.current) {
+        if (draft.previewUrl) URL.revokeObjectURL(draft.previewUrl);
+      }
+      setDrafts([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locked]);
 
   const addDraft = (file: File) => {
     if (drafts.length >= MAX_FILES) {
@@ -146,6 +176,10 @@ export function ChatComposer({
   };
 
   const handleFiles = (files: FileList | File[]) => {
+    if (locked) {
+      onLockedAction?.('attachment');
+      return;
+    }
     const list = Array.from(files);
     if (drafts.length + list.length > MAX_FILES) {
       toast.error(`You can attach up to ${MAX_FILES} files in a single message.`);
@@ -174,8 +208,19 @@ export function ChatComposer({
     if (mic.state === 'recording') mic.stop();
   };
 
+  /** Returns true when the action was intercepted by the login gate. */
+  const requiresLogin = (feature: ComposerLockedFeature): boolean => {
+    if (!locked) return false;
+    onLockedAction?.(feature);
+    return true;
+  };
+
   const performSend = async (content: string, attachmentDrafts: AttachmentDraft[]) => {
     if (isStreaming || disabled || uploading) return;
+    if (locked && attachmentDrafts.length > 0) {
+      onLockedAction?.('attachment');
+      return;
+    }
     const trimmed = content.trim();
     if (!trimmed && attachmentDrafts.length === 0) return;
 
@@ -215,6 +260,7 @@ export function ChatComposer({
   };
 
   const toggleMic = () => {
+    if (requiresLogin('mic')) return;
     if (voice.active) return;
     if (mic.state === 'recording') {
       mic.stop();
@@ -303,59 +349,105 @@ export function ChatComposer({
             <div className="composer-controls-left">
               <button
                 className="composer-icon-btn"
-                title="Attach image or PDF (temporary, not stored)"
-                onClick={() => fileInputRef.current?.click()}
+                title={locked ? 'Log in to attach photos or PDFs' : 'Attach image or PDF (temporary, not stored)'}
+                onClick={() => {
+                  if (requiresLogin('attachment')) return;
+                  fileInputRef.current?.click();
+                }}
                 disabled={disabled || uploading || voiceActive}
               >
                 <MdAttachFile size={18} />
               </button>
 
-              <select
-                className="select composer-select composer-mode-select"
-                value={mode}
-                onChange={(e) => changeMode(e.target.value)}
-                disabled={isStreaming || disabled}
-                title="AI model mode"
-                aria-label="AI model mode"
-              >
-                {MODE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+              {locked ? (
+                <button
+                  type="button"
+                  className="select composer-select composer-mode-select"
+                  title="Log in to choose an answer mode"
+                  aria-label="Answer mode (log in required)"
+                  aria-haspopup="dialog"
+                  onClick={() => onLockedAction?.('mode')}
+                >
+                  {MODE_OPTIONS.find((option) => option.value === mode)?.label ?? 'Balanced'}
+                </button>
+              ) : (
+                <select
+                  className="select composer-select composer-mode-select"
+                  value={mode}
+                  onChange={(e) => changeMode(e.target.value)}
+                  disabled={isStreaming || disabled}
+                  title="AI model mode"
+                  aria-label="AI model mode"
+                >
+                  {MODE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              )}
 
-              <select
-                className="select composer-select"
-                value={language}
-                onChange={(e) => changeLanguage(e.target.value)}
-                disabled={isStreaming || disabled}
-                title="Reply language"
-                aria-label="Reply language"
-              >
-                {LANGUAGE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+              {locked ? (
+                <button
+                  type="button"
+                  className="select composer-select"
+                  title="Log in to choose the reply language"
+                  aria-label="Reply language (log in required)"
+                  aria-haspopup="dialog"
+                  onClick={() => onLockedAction?.('language')}
+                >
+                  {LANGUAGE_OPTIONS.find((option) => option.value === language)?.label ?? '🌐 Auto'}
+                </button>
+              ) : (
+                <select
+                  className="select composer-select"
+                  value={language}
+                  onChange={(e) => changeLanguage(e.target.value)}
+                  disabled={isStreaming || disabled}
+                  title="Reply language"
+                  aria-label="Reply language"
+                >
+                  {LANGUAGE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             <div className="composer-controls-right">
               <button
                 className={`composer-icon-btn${mic.state === 'recording' ? ' composer-recording' : ''}`}
-                title={mic.supported ? (mic.state === 'recording' ? 'Stop voice input' : 'Voice input') : 'Voice input not supported'}
+                title={
+                  locked
+                    ? 'Log in to use voice input'
+                    : mic.supported
+                      ? mic.state === 'recording'
+                        ? 'Stop voice input'
+                        : 'Voice input'
+                      : 'Voice input not supported'
+                }
                 onClick={toggleMic}
-                disabled={disabled || !mic.supported || voiceActive}
+                disabled={disabled || voiceActive || (!locked && !mic.supported)}
               >
                 {mic.state === 'recording' ? <MdMicOff size={18} /> : <MdMic size={18} />}
               </button>
 
               <button
                 className={`composer-icon-btn composer-voice-btn${voiceActive ? ` composer-voice-active composer-voice-${voice.mode}` : ''}`}
-                title={voiceActive ? 'End voice conversation' : 'Voice conversation'}
-                onClick={() => (voiceActive ? voice.stop() : voice.start())}
-                disabled={disabled || mic.state === 'recording'}
+                title={
+                  locked
+                    ? 'Log in to use voice conversation'
+                    : voiceActive
+                      ? 'End voice conversation'
+                      : 'Voice conversation'
+                }
+                onClick={() => {
+                  if (requiresLogin('voice')) return;
+                  voiceActive ? voice.stop() : voice.start();
+                }}
+                disabled={disabled || (!locked && mic.state === 'recording')}
               >
                 {voiceActive ? (
                   <>

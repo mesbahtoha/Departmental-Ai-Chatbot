@@ -1,5 +1,15 @@
 import { apiDelete, apiGet, apiPatch, apiPost, apiPut, apiUpload } from './api';
-import type { AdminBook, BookInfo, IngestionJob, ProviderSummary, QuizPreview, TutorResponse, TutorSource } from '@/types';
+import type {
+  AdminBook,
+  AIMode,
+  BookInfo,
+  ChatAttachment,
+  IngestionJob,
+  ProviderSummary,
+  QuizPreview,
+  TutorResponse,
+  TutorSource,
+} from '@/types';
 
 export interface GuestChatResult {
   tutor: TutorResponse;
@@ -15,13 +25,36 @@ export async function guestChat(message: string, options?: { language?: string; 
   return payload.tutor;
 }
 
-export async function tutorChat(message: string, options?: { language?: string; subject?: string; bookId?: string }): Promise<TutorResponse> {
-  const payload = await apiPost<GuestChatResult>('/api/v1/tutor/chat', {
-    message,
-    ...(options?.language ? { language: options.language } : {}),
-    ...(options?.subject ? { subject: options.subject } : {}),
-    ...(options?.bookId ? { bookId: options.bookId } : {}),
-  });
+export interface TutorChatOptions {
+  language?: string;
+  mode?: AIMode;
+  attachments?: ChatAttachment[];
+  subject?: string;
+  bookId?: string;
+  signal?: AbortSignal;
+}
+
+export async function tutorChat(message: string, options?: TutorChatOptions): Promise<TutorResponse> {
+  const payload = await apiPost<GuestChatResult>(
+    '/api/v1/tutor/chat',
+    {
+      message,
+      ...(options?.language ? { language: options.language } : {}),
+      ...(options?.mode ? { mode: options.mode } : {}),
+      ...(options?.attachments?.length
+        ? {
+            attachments: options.attachments.map((attachment) => ({
+              id: attachment.id,
+              type: attachment.type,
+              name: attachment.name,
+            })),
+          }
+        : {}),
+      ...(options?.subject ? { subject: options.subject } : {}),
+      ...(options?.bookId ? { bookId: options.bookId } : {}),
+    },
+    { signal: options?.signal }
+  );
   return payload.tutor;
 }
 

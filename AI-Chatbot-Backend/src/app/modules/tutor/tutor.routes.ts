@@ -6,7 +6,7 @@ import { asyncHandler, ok } from '../../../utils/response.utils';
 import { validate } from '../../../middleware/validate.middleware';
 import { authenticate } from '../../../middleware/auth.middleware';
 import { aiLimiter } from '../../../middleware/rateLimiter.middleware';
-import tutorService from '../../../services/ai/tutor.service';
+import tutorService, { attachmentSchema } from '../../../services/ai/tutor.service';
 import quotaService from '../../../services/quota.service';
 import { estimateTokens } from '../../../utils/text.utils';
 import { FeedbackModel } from '../../../database/models/ChatLog.model';
@@ -40,6 +40,16 @@ const guestChatSchema = z.object({
   bookId: z.string().max(50).optional(),
 });
 
+/**
+ * Logged-in learners can also choose an answer mode and attach temporary
+ * photos/PDFs. Guests never reach this schema (guest route uses the simpler
+ * text-only schema above).
+ */
+const authedChatSchema = guestChatSchema.extend({
+  mode: z.enum(['fast', 'balanced', 'accurate']).optional(),
+  attachments: z.array(attachmentSchema).max(5).optional(),
+});
+
 const tutorFeedbackSchema = z.object({
   requestId: z.string().min(1).max(100),
   helpful: z.boolean(),
@@ -69,18 +79,20 @@ router.post(
   '/chat',
   authenticate,
   aiLimiter,
-  validate(guestChatSchema),
+  validate(authedChatSchema),
   asyncHandler(async (req, res) => {
     const input = {
       message: req.body.message,
       language: req.body.language,
+      mode: req.body.mode,
+      attachments: req.body.attachments,
       subject: req.body.subject,
       bookId: req.body.bookId,
     };
     // Authenticated tutor answers count against the per-user token quota
     // (guests are covered by the guest rate limiter instead).
     await quotaService.assertCanUseAI(req.user!.id, tutorService.estimatePromptTokens(input), req.user!.role);
-    const result = await tutorService.answer(input, []);
+    const result = await tutorService.answer(input, [], { userId: req.user!.id });
     try {
       await quotaService.recordUsage({
         userId: new Types.ObjectId(req.user!.id),

@@ -1,26 +1,59 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { MarkdownRenderer } from '@/components/chat/MarkdownRenderer';
 import { QuizCard } from '@/components/lesson/QuizCard';
+import { ChatComposer, getLanguagePreference } from '@/components/chat/ChatComposer';
+import type { ComposerLockedFeature, ComposerSendPayload } from '@/components/chat/ChatComposer';
+import { Modal } from '@/components/ui/Modal';
+import { Button } from '@/components/ui/Button';
 import { guestChat, tutorChat, listBooks, makeTutorQuiz, sendTutorFeedback } from '@/lib/tutor';
 import { getErrorMessage } from '@/lib/api';
 import { useTutorStore } from '@/store/tutor.store';
 import { useAuthStore } from '@/store/auth.store';
-import { getLanguagePreference } from '@/components/chat/ChatComposer';
 import { parseTextbookRef, MATCH_REQUESTS_PATH } from '@/lib/textbookRef';
-import type { BookInfo, QuizPreview, TutorResponse, TutorSource } from '@/types';
+import type { AIMode, BookInfo, ChatAttachment, QuizPreview, TutorResponse, TutorSource } from '@/types';
 
 interface Turn {
   id: number;
   question: string;
+  attachments?: ChatAttachment[];
   response?: TutorResponse;
   error?: string;
+  stopped?: boolean;
   pending: boolean;
   quiz?: { quiz: QuizPreview; sources: TutorSource[] } | null;
   quizPending?: boolean;
   quizTried?: boolean;
   feedback?: 'up' | 'down' | null;
+}
+
+const LOCKED_FEATURE_TEXT: Record<ComposerLockedFeature, { title: string; detail: string }> = {
+  attachment: {
+    title: 'Attach a photo or PDF',
+    detail: 'Send a photo of your book page or a PDF, and the tutor will read it and help you.',
+  },
+  mode: {
+    title: 'Choose an answer mode',
+    detail: 'Pick Fast, Balanced or Accurate to control how the tutor answers.',
+  },
+  language: {
+    title: 'Choose the reply language',
+    detail: 'Pick Auto, English, বাংলা or Banglish for the answer.',
+  },
+  mic: {
+    title: 'Use voice input',
+    detail: 'Speak your question instead of typing it.',
+  },
+  voice: {
+    title: 'Start a voice conversation',
+    detail: 'Talk with the tutor and hear the answer read aloud.',
+  },
+};
+
+function isAbortError(error: unknown): boolean {
+  const candidate = error as { name?: string; code?: string } | null;
+  return candidate?.name === 'CanceledError' || candidate?.name === 'AbortError' || candidate?.code === 'ERR_CANCELED';
 }
 
 const EXAMPLES = [
@@ -63,36 +96,76 @@ export function TutorPage() {
   const setSubject = useTutorStore((s) => s.setSubject);
   const setBookId = useTutorStore((s) => s.setBookId);
   const bumpGuestUsed = useTutorStore((s) => s.bumpGuestUsed);
+  const navigate = useNavigate();
   const [books, setBooks] = useState<BookInfo[]>([]);
-  const [input, setInput] = useState('');
   const [turns, setTurns] = useState<Turn[]>([]);
   const [sending, setSending] = useState(false);
+  const [loginFeature, setLoginFeature] = useState<ComposerLockedFeature | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const authed = useAuthStore((s) => s.status === 'authenticated' && !!s.user);
 
   useEffect(() => {
     listBooks().then(setBooks).catch(() => setBooks([]));
   }, []);
 
-  const send = async (text: string) => {
+  const send = async (
+    text: string,
+    options?: { language?: string; mode?: AIMode; attachments?: ChatAttachment[] }
+  ) => {
     const question = text.trim();
-    if (!question || sending) return;
+    const attachments = options?.attachments ?? [];
+    if ((!question && !attachments.length) || sending) return;
     const id = ++turnId;
-    setTurns((t) => [...t, { id, question, pending: true }]);
-    setInput('');
+    setTurns((t) => [
+      ...t,
+      { id, question: question || 'Analyze the attached file(s).', attachments, pending: true },
+    ]);
     setSending(true);
+
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
-      const lang = getLanguagePreference();
+      const lang = options?.language ?? getLanguagePreference();
+      const language = lang === 'banglish' ? 'auto' : lang;
+      const message = question || 'Analyze the attached file(s).';
       const response = authed
-        ? await tutorChat(question, { language: lang === 'banglish' ? 'auto' : lang, subject: subject || undefined, bookId: bookId || undefined })
-        : await guestChat(question, { language: lang === 'banglish' ? 'auto' : lang, subject: subject || undefined, bookId: bookId || undefined });
+        ? await tutorChat(message, {
+            language,
+            mode: options?.mode,
+            attachments,
+            subject: subject || undefined,
+            bookId: bookId || undefined,
+            signal: controller.signal,
+          })
+        : await guestChat(message, { language, subject: subject || undefined, bookId: bookId || undefined });
       if (!authed) bumpGuestUsed();
       setTurns((t) => t.map((turn) => (turn.id === id ? { ...turn, response, pending: false } : turn)));
     } catch (error) {
+      if (isAbortError(error)) {
+        setTurns((t) => t.map((turn) => (turn.id === id ? { ...turn, pending: false, stopped: true } : turn)));
+        toast('Generation stopped.', { icon: '⏹️' });
+        return;
+      }
       setTurns((t) => t.map((turn) => (turn.id === id ? { ...turn, error: getErrorMessage(error), pending: false } : turn)));
       toast.error(getErrorMessage(error));
     } finally {
+      if (abortRef.current === controller) abortRef.current = null;
       setSending(false);
     }
+  };
+
+  const stop = () => abortRef.current?.abort();
+
+  const handleLockedAction = (feature: ComposerLockedFeature) => {
+    setLoginFeature(feature);
+  };
+
+  const lastTurn = turns[turns.length - 1];
+  const voiceExternal = {
+    busy: sending,
+    reply: lastTurn?.response
+      ? { id: lastTurn.response.requestId, text: lastTurn.response.answer }
+      : null,
   };
 
   const vote = (id: number, helpful: boolean) => {
@@ -119,7 +192,7 @@ export function TutorPage() {
   };
 
   return (
-    <div className="pg-app" style={{ paddingBottom: 120 }}>
+    <div className="pg-app" style={{ paddingBottom: 190 }}>
       <div className="pg-container" style={{ maxWidth: 780, paddingTop: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
           <h1 style={{ fontSize: 26 }}>Shikhi Bondhu <span style={{ fontSize: 13, color: '#64748B', fontWeight: 500 }}>Class 3 English Friend</span></h1>
@@ -181,9 +254,23 @@ export function TutorPage() {
               <div className="pg-card" style={{ padding: 14, background: '#F1F5F9' }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#64748B', marginBottom: 4 }}>You wrote:</div>
                 <div style={{ whiteSpace: 'pre-wrap', fontWeight: 600 }}>{turn.question}</div>
+                {!!turn.attachments?.length && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                    {turn.attachments.map((attachment) => (
+                      <span
+                        key={attachment.id}
+                        className="pg-badge"
+                        style={{ fontSize: 11.5, padding: '4px 10px', boxShadow: '2px 2px 0 0 #1E293B' }}
+                      >
+                        {attachment.type === 'image' ? '📷' : '📄'} {attachment.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="pg-card pg-card-mint-shadow" style={{ padding: 18, marginTop: 10 }}>
                 {turn.pending && <p style={{ color: '#64748B' }}>Friend is thinking...</p>}
+                {turn.stopped && <p style={{ color: '#64748B' }}>Stopped. Ask again whenever you are ready.</p>}
                 {turn.error && <p style={{ color: '#DC2626' }}>{turn.error}</p>}
                 {turn.response && (
                   <>
@@ -254,28 +341,64 @@ export function TutorPage() {
           ))}
         </div>
 
-        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#FFFFFF', borderTop: '2px solid #1E293B', padding: '12px 16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, maxWidth: 760, margin: '0 auto' }}>
-            <input
-              className="pg-input"
-              style={{ flex: 1 }}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Write here... Try: Unit 3, Lesson 5, Page 45"
-              aria-label="Write your question"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  void send(input);
-                }
-              }}
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            background: 'var(--bg-surface)',
+            borderTop: '2px solid #1E293B',
+            padding: '10px 16px',
+            zIndex: 40,
+          }}
+        >
+          <div style={{ maxWidth: 780, margin: '0 auto' }}>
+            <ChatComposer
+              onSend={(payload: ComposerSendPayload) =>
+                void send(payload.content, {
+                  language: payload.language,
+                  mode: payload.mode,
+                  attachments: payload.attachments,
+                })
+              }
+              isStreaming={sending}
+              onStop={stop}
+              locked={!authed}
+              onLockedAction={handleLockedAction}
+              voiceExternal={voiceExternal}
             />
-            <button className="pg-btn-candy" style={{ width: 'auto' }} onClick={() => void send(input)} disabled={sending || !input.trim()}>
-              {sending ? '...' : 'Send'}
-            </button>
           </div>
         </div>
       </div>
+
+      <Modal
+        open={!!loginFeature}
+        onClose={() => setLoginFeature(null)}
+        title={loginFeature ? `🔒 ${LOCKED_FEATURE_TEXT[loginFeature].title}` : 'Log in first'}
+        maxWidth={460}
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
+            <Button variant="secondary" onClick={() => setLoginFeature(null)}>
+              Keep chatting as guest
+            </Button>
+            <Button onClick={() => navigate('/login', { state: { from: '/tutor' } })}>
+              Log in
+            </Button>
+          </div>
+        }
+      >
+        <p style={{ marginTop: 0, fontWeight: 600 }}>
+          {loginFeature ? LOCKED_FEATURE_TEXT[loginFeature].detail : ''}
+        </p>
+        <p style={{ color: '#64748B', fontSize: 14 }}>
+          Attachments, voice input, voice conversation, reply language and answer mode are for
+          logged-in learners. This keeps your files private and saves your progress.
+        </p>
+        <p style={{ color: '#64748B', fontSize: 14, marginBottom: 0 }}>
+          আগে লগইন করো, তারপর এই সুবিধাগুলো ব্যবহার করো। গেস্ট হিসেবে তুমি লেখা প্রশ্ন করতে পারো।
+        </p>
+      </Modal>
     </div>
   );
 }
