@@ -32,7 +32,7 @@ export function AdminBooks() {
   const [loading, setLoading] = useState(true);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [detail, setDetail] = useState<{ book: AdminBook; jobs: IngestionJob[]; samples: { chunkId: string; chunkIndex: number; chapterTitle?: string; pageStart?: number; pageEnd?: number; preview: string }[] } | null>(null);
-  const [form, setForm] = useState({ title: '', subject: 'গণিত', grade: 'Class 3', curriculum: 'NCTB', language: 'bn', edition: '', publisher: '', rightsStatus: 'unverified' });
+  const [form, setForm] = useState({ title: '', subject: 'গণিত', grade: 'Class 1', curriculum: 'NCTB', language: 'bn', edition: '', publisher: '', rightsStatus: 'unverified' });
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState('');
   const [staleBackend, setStaleBackend] = useState(false);
@@ -177,7 +177,11 @@ export function AdminBooks() {
           <Input placeholder="শিরোনাম *" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
           <div className="flex gap-2">
             <Input placeholder="বিষয় *" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} />
-            <Input placeholder="শ্রেণি" value={form.grade} onChange={(e) => setForm({ ...form, grade: e.target.value })} />
+            <select className="input" value={form.grade} onChange={(e) => setForm({ ...form, grade: e.target.value })} style={{ maxWidth: 180 }}>
+              {Array.from({ length: 10 }, (_, i) => i + 1).map((level) => (
+                <option key={level} value={`Class ${level}`}>Class {level}</option>
+              ))}
+            </select>
           </div>
           <div className="flex gap-2">
             <Input placeholder="কারিকুলাম" value={form.curriculum} onChange={(e) => setForm({ ...form, curriculum: e.target.value })} />

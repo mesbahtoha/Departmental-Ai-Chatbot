@@ -11,6 +11,7 @@ import { EMBEDDING_MODEL, EMBEDDING_VERSION } from './embedding.service';
 export interface CreateBookInput {
   title: string;
   subject: string;
+  classLevel?: number;
   grade?: string;
   curriculum?: string;
   language?: string;
@@ -44,7 +45,8 @@ export const bookIngestionService = {
     const book = await BookModel.create({
       title: normalizeText(input.title),
       subject: normalizeText(input.subject),
-      grade: input.grade || 'Class 3',
+      classLevel: input.classLevel || 3,
+      grade: input.grade || `Class ${input.classLevel || 3}`,
       curriculum: input.curriculum || 'NCTB',
       language: input.language || 'bn',
       edition: input.edition || '',
@@ -102,6 +104,7 @@ export const bookIngestionService = {
           bookId: book._id,
           bookTitle: book.title,
           subject: book.subject,
+          classLevel: book.classLevel,
           grade: book.grade,
           curriculum: book.curriculum,
           language: book.language,

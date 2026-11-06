@@ -88,3 +88,27 @@ export const uploadChatAttachments = multer({
   },
   fileFilter: chatAttachmentFilter,
 });
+
+const MATERIAL_ALLOWED = new Set([
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'text/plain',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+]);
+
+/** Multipart upload for school study materials (notes, exam sheets, worksheets). */
+export const uploadMaterialFile = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 25 * 1024 * 1024, files: 1 },
+  fileFilter: (_req, file, cb) => {
+    if (MATERIAL_ALLOWED.has(file.mimetype)) cb(null, true);
+    else cb(new Error('Only PDF, image, text, Word, PowerPoint and Excel files are allowed'));
+  },
+});

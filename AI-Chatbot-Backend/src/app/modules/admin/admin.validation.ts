@@ -10,7 +10,14 @@ export const updateUserSchema = z.object({
   name: z.string().trim().min(2).max(80).optional(),
   email: z.string().trim().email().max(120).optional(),
   isActive: z.boolean().optional(),
-  role: z.enum(['user', 'admin']).optional(),
+  /**
+   * Assignable platform roles for user accounts:
+   * - student / user : learner accounts (self-registered students use 'student')
+   * - teacher         : teachers created/managed inside a school
+   * - school_admin   : school-level admins managed via the schools module
+   * - admin           : platform staff with cross-school access
+   */
+  role: z.enum(['user', 'student', 'teacher', 'school_admin', 'admin']).optional(),
 });
 
 export const createNoticeSchema = z.object({

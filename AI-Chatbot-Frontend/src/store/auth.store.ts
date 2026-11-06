@@ -10,7 +10,7 @@ interface AuthState {
   initialize: () => Promise<void>;
   login: (email: string, password: string) => Promise<AuthUser>;
   loginAdmin: (email: string, password: string) => Promise<AuthUser>;
-  register: (name: string, email: string, password: string) => Promise<AuthUser>;
+  register: (name: string, email: string, password: string, classLevel?: number, schoolCode?: string) => Promise<AuthUser>;
   logout: () => Promise<void>;
   refreshUsage: () => Promise<void>;
   setUser: (user: AuthUser) => void;
@@ -74,8 +74,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     return payload.user;
   },
 
-  async register(name, email, password) {
-    const payload = await apiPost<AuthPayload>('/api/v1/auth/register', { name, email, password });
+  async register(name, email, password, classLevel?, schoolCode?) {
+    const payload = await apiPost<AuthPayload>('/api/v1/auth/register', {
+      name,
+      email,
+      password,
+      ...(classLevel ? { classLevel } : {}),
+      ...(schoolCode?.trim() ? { schoolCode: schoolCode.trim() } : {}),
+    });
     if (payload.tokens) tokenStore.set(payload.tokens.accessToken, payload.tokens.refreshToken);
     persistUser(payload.user);
     set({ user: payload.user, status: 'authenticated', initialized: true });

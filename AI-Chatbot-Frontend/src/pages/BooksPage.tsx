@@ -30,6 +30,7 @@ export function BooksPage() {
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
   const [subject, setSubject] = useState('');
+  const [classLevel, setClassLevel] = useState<number | ''>('');
   const [curriculum, setCurriculum] = useState('');
   const [sort, setSort] = useState<'title' | 'subject' | 'recent'>('title');
   const [page, setPage] = useState(1);
@@ -42,11 +43,11 @@ export function BooksPage() {
 
   useEffect(() => {
     setLoading(true);
-    listBooks({ search: debounced || undefined })
+    listBooks({ search: debounced || undefined, ...(classLevel ? { classLevel } : {}) })
       .then(setBooks)
       .catch(() => setBooks([]))
       .finally(() => setLoading(false));
-  }, [debounced]);
+  }, [debounced, classLevel]);
 
   const subjects = useMemo(() => Array.from(new Set(books.map((b) => b.subject).filter(Boolean))), [books]);
   const curricula = useMemo(() => Array.from(new Set(books.map((b) => b.curriculum).filter(Boolean))), [books]);
@@ -68,14 +69,22 @@ export function BooksPage() {
   return (
     <div className="pg-app" style={{ paddingBottom: 72 }}>
       <div className="pg-container" style={{ maxWidth: 1020, paddingTop: 28 }}>
-        <span className="pg-badge pg-badge-yellow" style={{ marginBottom: 10, display: 'inline-flex' }}>{bn ? 'তৃতীয় শ্রেণির লাইব্রেরি' : 'Class 3 library'}</span>
+        <span className="pg-badge pg-badge-yellow" style={{ marginBottom: 10, display: 'inline-flex' }}>{bn ? '১-১০ শ্রেণির লাইব্রেরি' : 'Class 1-10 library'}</span>
         <h1 style={{ fontSize: 32, marginBottom: 6 }}>{bn ? 'বইয়ের তালিকা' : 'Book list'}</h1>
-        <p className="muted" style={{ marginBottom: 16 }}>{bn ? 'প্রকাশিত বই এখানে থাকে। নতুন বই তৈরি হলেই আসে।' : 'Published Class 3 books live here. New books appear as soon as they are ready.'}</p>
+        <p className="muted" style={{ marginBottom: 16 }}>{bn ? 'প্রকাশিত বই এখানে থাকে। নতুন বই তৈরি হলেই আসে।' : 'Published books for Classes 1-10 live here. New books appear as soon as they are ready.'}</p>
 
         <div className="pg-card toolbar-card">
           <div className="toolbar-row">
             <label className="sr-only" htmlFor="bk-search">{t('action.search')}</label>
             <input id="bk-search" className="pg-input toolbar-search" placeholder={bn ? 'বই বা বিষয় খোঁজো...' : 'Search a book or subject...'} value={search} onChange={(e) => setSearch(e.target.value)} aria-label={bn ? 'বই খোঁজো' : 'Search books'} />
+            <label className="toolbar-field">{bn ? 'শ্রেণি' : 'Class'}
+              <select className="pg-input" value={classLevel === '' ? '' : String(classLevel)} onChange={(e) => { setClassLevel(e.target.value ? Number(e.target.value) : ''); setPage(1); }} aria-label={bn ? 'শ্রেণি' : 'Class level'}>
+                <option value="">{bn ? 'সব শ্রেণি' : 'All classes'}</option>
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((level) => (
+                  <option key={level} value={level}>Class {level}</option>
+                ))}
+              </select>
+            </label>
             <label className="toolbar-field">{bn ? 'বিষয়' : 'Subject'}
               <select className="pg-input" value={subject} onChange={(e) => { setSubject(e.target.value); setPage(1); }} aria-label={bn ? 'বিষয়' : 'Subject'}>
                 <option value="">{bn ? 'সব' : 'All'}</option>

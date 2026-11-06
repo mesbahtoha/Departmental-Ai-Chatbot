@@ -5,11 +5,13 @@ import { BookModel } from '../../../database/models/Book.model';
 import { BookChunkModel } from '../../../database/models/BookChunk.model';
 import { IngestionJobModel } from '../../../database/models/IngestionJob.model';
 import bookIngestionService from '../../../services/rag/book-ingestion.service';
+import notificationService from '../../../services/notification.service';
 import { normalizeText } from '../../../utils/text.utils';
 
 export const createBookSchema = z.object({
   title: z.string().min(1).max(300),
   subject: z.string().min(1).max(100),
+  classLevel: z.coerce.number().int().min(1).max(10).optional(),
   grade: z.string().max(50).optional(),
   curriculum: z.string().max(50).optional(),
   language: z.string().max(20).optional(),
@@ -23,6 +25,7 @@ export const createBookSchema = z.object({
 export const updateBookSchema = z.object({
   title: z.string().min(1).max(300).optional(),
   subject: z.string().min(1).max(100).optional(),
+  classLevel: z.coerce.number().int().min(1).max(10).optional(),
   grade: z.string().max(50).optional(),
   curriculum: z.string().max(50).optional(),
   language: z.string().max(20).optional(),
@@ -39,6 +42,7 @@ function bookPayload(b: Record<string, unknown>) {
     _id: b._id,
     title: b.title,
     subject: b.subject,
+    classLevel: b.classLevel,
     grade: b.grade,
     curriculum: b.curriculum,
     language: b.language,
@@ -64,9 +68,10 @@ function bookPayload(b: Record<string, unknown>) {
 
 export const adminBooksController = {
   list: asyncHandler(async (req: Request, res: Response) => {
-    const { search, subject, publicationState } = req.query as Record<string, string>;
+    const { search, subject, publicationState, classLevel } = req.query as Record<string, string>;
     const q: Record<string, unknown> = {};
     if (subject) q.subject = subject;
+    if (classLevel) q.classLevel = Number(classLevel);
     if (publicationState) q.publicationState = publicationState;
     if (search) q.title = { $regex: search, $options: 'i' };
     const books = await BookModel.find(q).sort({ updatedAt: -1 }).limit(200).lean();
@@ -107,6 +112,7 @@ export const adminBooksController = {
     const { book, jobId } = await bookIngestionService.createBook({
       title: String(req.body.title || ''),
       subject: String(req.body.subject || ''),
+      classLevel: req.body.classLevel ? Number(req.body.classLevel) : undefined,
       grade: req.body.grade,
       curriculum: req.body.curriculum,
       language: req.body.language,
@@ -124,15 +130,18 @@ export const adminBooksController = {
   update: asyncHandler(async (req: Request, res: Response) => {
     const book = await BookModel.findById(req.params.id);
     if (!book) return fail(res, 404, 'Book not found');
-    const allowed = ['title', 'subject', 'grade', 'curriculum', 'language', 'edition', 'year', 'publisher', 'sourceNotes', 'rightsStatus', 'reviewedBy'] as const;
+    const allowed = ['title', 'subject', 'classLevel', 'grade', 'curriculum', 'language', 'edition', 'year', 'publisher', 'sourceNotes', 'rightsStatus', 'reviewedBy'] as const;
     for (const key of allowed) {
       if (req.body[key] !== undefined) (book as unknown as Record<string, unknown>)[key] = typeof req.body[key] === 'string' ? normalizeText(req.body[key]) : req.body[key];
+    }
+    if (req.body.classLevel !== undefined && req.body.grade === undefined) {
+      book.grade = `Class ${book.classLevel}`;
     }
     await book.save();
     // Keep chunk denormalized metadata in sync for edited fields.
     await BookChunkModel.updateMany(
       { bookId: book._id },
-      { $set: { bookTitle: book.title, subject: book.subject, grade: book.grade, curriculum: book.curriculum, language: book.language, edition: book.edition } }
+      { $set: { bookTitle: book.title, subject: book.subject, classLevel: book.classLevel, grade: book.grade, curriculum: book.curriculum, language: book.language, edition: book.edition } }
     );
     ok(res, { book: bookPayload(book.toObject()) });
   }),
@@ -147,6 +156,15 @@ export const adminBooksController = {
     book.publishedBy = req.user?.email || 'admin';
     book.publishedAt = new Date();
     await book.save();
+    await notificationService.notifyAllStaff(
+      {
+        type: 'book',
+        title: 'New textbook published',
+        message: `${book.title} (Class ${book.classLevel}, ${book.subject}) is now available in the AI tutor.`,
+        link: '/books',
+      },
+      { actorId: req.user?.id }
+    );
     ok(res, { book: bookPayload(book.toObject()) });
   }),
 

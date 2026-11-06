@@ -81,10 +81,11 @@ export async function sendTutorFeedback(requestId: string, helpful: boolean): Pr
   }
 }
 
-export async function listBooks(params?: { subject?: string; search?: string }): Promise<BookInfo[]> {
+export async function listBooks(params?: { subject?: string; search?: string; classLevel?: number }): Promise<BookInfo[]> {
   const query = new URLSearchParams();
   if (params?.subject) query.set('subject', params.subject);
   if (params?.search) query.set('search', params.search);
+  if (params?.classLevel) query.set('classLevel', String(params.classLevel));
   const payload = await apiGet<{ books: BookInfo[] }>(`/api/v1/books?${query.toString()}`);
   return payload.books ?? [];
 }

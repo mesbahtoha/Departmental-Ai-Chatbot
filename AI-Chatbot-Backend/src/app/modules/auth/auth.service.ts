@@ -4,6 +4,9 @@ import { userRepository } from '../../../repositories/user.repository';
 import { adminRepository } from '../../../repositories/admin.repository';
 import { RefreshTokenModel } from '../../../database/models/RefreshToken.model';
 import { UserModel } from '../../../database/models/User.model';
+import { AdminModel } from '../../../database/models/Admin.model';
+import { SchoolModel } from '../../../database/models/School.model';
+import type { Role } from '../../../constants';
 import {
   generateRandomToken,
   hashToken,
@@ -18,10 +21,14 @@ import { log } from '../../../config/logger';
 
 export interface AuthPrincipal {
   id: string;
-  role: 'admin' | 'user';
+  role: Role;
   email: string;
   name: string;
   avatarUrl?: string | null;
+  schoolId?: string | null;
+  schoolName?: string | null;
+  schoolCode?: string | null;
+  classLevel?: number | null;
 }
 
 export interface AuthTokens {
@@ -31,19 +38,34 @@ export interface AuthTokens {
 
 const REFRESH_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
-function toPrincipal(user: {
+interface UserLike {
   _id: unknown;
   role: string;
   email: string;
   name: string;
   avatarUrl?: string | null;
-}): AuthPrincipal {
+  schoolId?: unknown;
+  classLevel?: number | null;
+}
+
+async function toPrincipal(user: UserLike, roleOverride?: Role): Promise<AuthPrincipal> {
+  let schoolName: string | null = null;
+  let schoolCode: string | null = null;
+  if (user.schoolId) {
+    const school = await SchoolModel.findById(user.schoolId).select('name code').lean();
+    schoolName = school?.name ?? null;
+    schoolCode = school?.code ?? null;
+  }
   return {
     id: String(user._id),
-    role: user.role === 'admin' ? 'admin' : 'user',
+    role: roleOverride ?? (user.role as Role),
     email: user.email,
     name: user.name,
     avatarUrl: user.avatarUrl || null,
+    schoolId: user.schoolId ? String(user.schoolId) : null,
+    schoolName,
+    schoolCode,
+    classLevel: user.classLevel ?? null,
   };
 }
 
@@ -52,7 +74,13 @@ function toPrincipal(user: {
  * logout, password reset flows.
  */
 export const authService = {
-  async register(input: { name: string; email: string; password: string }): Promise<{ user: AuthPrincipal; tokens: AuthTokens }> {
+  async register(input: {
+    name: string;
+    email: string;
+    password: string;
+    classLevel?: number;
+    schoolCode?: string;
+  }): Promise<{ user: AuthPrincipal; tokens: AuthTokens }> {
     const appSettings = await settingsService.getAppSettings();
     if (!appSettings.allowRegistration) {
       const error = new Error('Registration is currently disabled by the administrator') as Error & { statusCode?: number };
@@ -67,18 +95,31 @@ export const authService = {
       throw error;
     }
 
+    let schoolId: Types.ObjectId | null = null;
+    if (input.schoolCode?.trim()) {
+      const school = await SchoolModel.findOne({ code: input.schoolCode.trim().toUpperCase(), isActive: true }).lean();
+      if (!school) {
+        const error = new Error('School code not found. Please check the code given by your school.') as Error & { statusCode?: number };
+        error.statusCode = 400;
+        throw error;
+      }
+      schoolId = school._id as Types.ObjectId;
+    }
+
     const passwordHash = bcrypt.hashSync(input.password, 10);
     const user = await userRepository.create({
       name: input.name.trim(),
       email: input.email,
       passwordHash,
-      role: 'user',
+      role: 'student',
+      ...(input.classLevel ? { classLevel: input.classLevel } : {}),
+      ...(schoolId ? { schoolId } : {}),
     });
 
     const tokens = await this.issueTokens(String(user._id), 'user');
 
-    log.info('User registered', { userId: String(user._id), email: user.email });
-    return { user: toPrincipal(user), tokens };
+    log.info('User registered', { userId: String(user._id), email: user.email, schoolId: schoolId ? String(schoolId) : null });
+    return { user: await toPrincipal(user), tokens };
   },
 
   async loginUser(email: string, password: string): Promise<{ user: AuthPrincipal; tokens: AuthTokens }> {
@@ -86,6 +127,12 @@ export const authService = {
     if (!user) {
       const error = new Error('Invalid email or password') as Error & { statusCode?: number };
       error.statusCode = 401;
+      throw error;
+    }
+
+    if (!user.isActive) {
+      const error = new Error('This account has been disabled. Please contact your administrator.') as Error & { statusCode?: number };
+      error.statusCode = 403;
       throw error;
     }
 
@@ -99,7 +146,7 @@ export const authService = {
     await userRepository.update(user._id, { lastLoginAt: new Date() });
     const tokens = await this.issueTokens(String(user._id), 'user');
 
-    return { user: toPrincipal(user), tokens };
+    return { user: await toPrincipal(user), tokens };
   },
 
   async loginAdmin(email: string, password: string): Promise<{ user: AuthPrincipal; tokens: AuthTokens }> {
@@ -121,7 +168,10 @@ export const authService = {
     const tokens = await this.issueTokens(String(admin._id), 'admin');
 
     return {
-      user: toPrincipal({ _id: admin._id, role: 'admin', email: admin.email, name: admin.name }),
+      user: await toPrincipal(
+        { _id: admin._id, role: admin.role || 'admin', email: admin.email, name: admin.name },
+        (admin.role || 'admin') as Role
+      ),
       tokens,
     };
   },
@@ -179,29 +229,34 @@ export const authService = {
       { $set: { replacedBy: refreshToken } }
     );
 
-    const role = stored.userId ? await this.resolveRole(stored.userId) : 'user';
+    const storageRole = stored.userId ? await this.resolveCollection(stored.userId) : 'user';
 
-    const user = await this.getPrincipal(stored.userId, role);
+    const user = await this.getPrincipal(stored.userId, storageRole);
     if (!user) {
       const error = new Error('Account not found') as Error & { statusCode?: number };
       error.statusCode = 401;
       throw error;
     }
 
-    const tokens = await this.issueTokens(user.id, user.role);
+    const tokens = await this.issueTokens(user.id, storageRole);
     return { user, tokens };
   },
 
-  async resolveRole(userId: Types.ObjectId): Promise<'admin' | 'user'> {
-    const user = await UserModel.findById(userId).lean();
-    return user?.role === 'admin' ? 'admin' : 'user';
+  /** Returns which collection owns the account (admin or users). */
+  async resolveCollection(userId: Types.ObjectId | string): Promise<'admin' | 'user'> {
+    const admin = await AdminModel.findById(userId).select('_id').lean();
+    if (admin) return 'admin';
+    return 'user';
   },
 
-  async getPrincipal(userId: Types.ObjectId | string, role?: 'admin' | 'user'): Promise<AuthPrincipal | null> {
-    if (role === 'admin') {
+  async getPrincipal(userId: Types.ObjectId | string, storageRole?: 'admin' | 'user'): Promise<AuthPrincipal | null> {
+    if (storageRole === 'admin') {
       const admin = await adminRepository.findById(userId);
       if (!admin) return null;
-      return toPrincipal({ _id: admin._id, role: 'admin', email: admin.email, name: admin.name });
+      return toPrincipal(
+        { _id: admin._id, role: admin.role || 'admin', email: admin.email, name: admin.name },
+        (admin.role || 'admin') as Role
+      );
     }
 
     const user = await userRepository.findById(userId);

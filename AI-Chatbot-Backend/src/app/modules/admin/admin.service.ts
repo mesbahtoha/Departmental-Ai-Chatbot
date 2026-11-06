@@ -78,7 +78,12 @@ export const adminService = {
     };
   },
 
-  async listUsers(search: string, page: number, limit: number) {
+  async listUsers(
+    search: string,
+    page: number,
+    limit: number,
+    schoolId?: string | null
+  ) {
     const filter = search
       ? {
           $or: [
@@ -100,6 +105,9 @@ export const adminService = {
         isActive: u.isActive,
         lastLoginAt: u.lastLoginAt,
         createdAt: u.createdAt,
+        schoolId: u.schoolId ? String(u.schoolId) : null,
+        classLevel: u.classLevel ?? null,
+        assignedClasses: u.assignedClasses ?? [],
       })),
       total,
     };
@@ -107,7 +115,17 @@ export const adminService = {
 
   async updateUser(
     userId: string,
-    data: { name?: string; email?: string; isActive?: boolean; role?: 'user' | 'admin' }
+    data: {
+      name?: string;
+      email?: string;
+      isActive?: boolean;
+      role?:
+        | 'user'
+        | 'student'
+        | 'teacher'
+        | 'school_admin'
+        | 'admin';
+    }
   ) {
     const user = await UserModel.findById(userId);
     if (!user) return null;

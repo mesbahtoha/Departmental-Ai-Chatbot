@@ -1,22 +1,46 @@
 import { userRepository } from '../../../repositories/user.repository';
 import { uploadBuffer, deleteGridFSFile } from '../../../config/gridfs';
+import { SchoolModel } from '../../../database/models/School.model';
 import { AuthPrincipal } from '../auth/auth.service';
 
+function toPrincipal(
+  user: {
+    _id: unknown;
+    role: string;
+    email: string;
+    name: string;
+    avatarUrl?: string | null;
+    schoolId?: unknown;
+    classLevel?: number | null;
+  }
+): Promise<AuthPrincipal> {
+  const schoolId = user.schoolId ? String(user.schoolId) : null;
+  const schoolPromise = schoolId
+    ? SchoolModel.findById(user.schoolId as string).select('name').lean()
+    : Promise.resolve(null);
+
+  // eslint-disable-next-line @typescript-eslint/no-floating-promises
+  return schoolPromise.then((school) => ({
+    id: String(user._id),
+    role: user.role as AuthPrincipal['role'],
+    email: user.email,
+    name: user.name,
+    avatarUrl: user.avatarUrl || null,
+    schoolId,
+    schoolName: school?.name ?? null,
+    classLevel: user.classLevel ?? null,
+  }));
+}
+
 /**
- * User service - profile management and avatar uploads.
+ * User service - profile management, avatar uploads and self-service context.
  */
 export const userService = {
   async getProfile(userId: string): Promise<AuthPrincipal | null> {
     const user = await userRepository.findById(userId);
     if (!user) return null;
 
-    return {
-      id: String(user._id),
-      role: 'user',
-      email: user.email,
-      name: user.name,
-      avatarUrl: user.avatarUrl || null,
-    };
+    return toPrincipal(user);
   },
 
   async updateProfile(
@@ -42,13 +66,7 @@ export const userService = {
 
     if (!updated) return null;
 
-    return {
-      id: String(updated._id),
-      role: 'user',
-      email: updated.email,
-      name: updated.name,
-      avatarUrl: updated.avatarUrl || null,
-    };
+    return toPrincipal(updated);
   },
 
   /** Uploads an avatar image to GridFS and links it to the user. */
@@ -74,13 +92,7 @@ export const userService = {
 
     if (!updated) return null;
 
-    return {
-      id: String(updated._id),
-      role: 'user',
-      email: updated.email,
-      name: updated.name,
-      avatarUrl: updated.avatarUrl || null,
-    };
+    return toPrincipal(updated);
   },
 };
 

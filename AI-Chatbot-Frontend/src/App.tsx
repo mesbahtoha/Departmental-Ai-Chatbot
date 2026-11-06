@@ -3,7 +3,9 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { PublicLayout } from '@/components/layout/PublicLayout';
 import { AppShell } from '@/components/layout/AppShell';
 import { AdminLayout } from '@/components/layout/AdminLayout';
-import { ProtectedRoute, AdminRoute, PublicOnlyRoute } from '@/routes/guards';
+import { StaffLayout } from '@/components/layout/StaffLayout';
+import { StudentLayout } from '@/components/layout/StudentLayout';
+import { ProtectedRoute, AdminRoute, SchoolAdminRoute, TeacherRoute, StudentRoute, PublicOnlyRoute } from '@/routes/guards';
 import { FullPageSpinner } from '@/components/ui/Spinner';
 import { LandingPage } from '@/pages/LandingPage';
 import { useAuthStore } from '@/store/auth.store';
@@ -40,6 +42,22 @@ const AdminSettings = lazy(() => import('@/pages/admin/Settings').then((m) => ({
 const AdminPromptTemplates = lazy(() => import('@/pages/admin/PromptTemplates').then((m) => ({ default: m.AdminPromptTemplates })));
 const AdminLogs = lazy(() => import('@/pages/admin/Logs').then((m) => ({ default: m.AdminLogs })));
 const AdminSystem = lazy(() => import('@/pages/admin/System').then((m) => ({ default: m.AdminSystem })));
+const AdminSchools = lazy(() => import('@/pages/admin/Schools').then((m) => ({ default: m.AdminSchools })));
+const AdminQuestions = lazy(() => import('@/pages/admin/Questions').then((m) => ({ default: m.AdminQuestions })));
+const AdminQuestionSets = lazy(() => import('@/pages/admin/QuestionSets').then((m) => ({ default: m.AdminQuestionSets })));
+const AdminAssessments = lazy(() => import('@/pages/admin/Assessments').then((m) => ({ default: m.AdminAssessments })));
+const SchoolDashboard = lazy(() => import('@/pages/school/Dashboard').then((m) => ({ default: m.SchoolDashboard })));
+const SchoolMembers = lazy(() => import('@/pages/school/Members').then((m) => ({ default: m.SchoolMembers })));
+const SchoolQuestions = lazy(() => import('@/pages/school/Questions').then((m) => ({ default: m.SchoolQuestions })));
+const SchoolAssessments = lazy(() => import('@/pages/school/Assessments').then((m) => ({ default: m.SchoolAssessments })));
+const TeacherQuestions = lazy(() => import('@/pages/teacher/Questions').then((m) => ({ default: m.TeacherQuestions })));
+const TeacherQuestionSets = lazy(() => import('@/pages/teacher/QuestionSets').then((m) => ({ default: m.TeacherQuestionSets })));
+const TeacherDashboard = lazy(() => import('@/pages/teacher/Dashboard').then((m) => ({ default: m.TeacherDashboard })));
+const TeacherAssessments = lazy(() => import('@/pages/teacher/Assessments').then((m) => ({ default: m.TeacherAssessments })));
+const TeacherSubmissions = lazy(() => import('@/pages/teacher/Submissions').then((m) => ({ default: m.TeacherSubmissions })));
+const TeacherMaterials = lazy(() => import('@/pages/teacher/Materials').then((m) => ({ default: m.TeacherMaterials })));
+const StudentHome = lazy(() => import('@/pages/student/Home').then((m) => ({ default: m.StudentHome })));
+const StudentQuiz = lazy(() => import('@/pages/student/Quiz').then((m) => ({ default: m.StudentQuiz })));
 
 const PageLoader = () => <FullPageSpinner label="Loading…" />;
 
@@ -101,8 +119,12 @@ export default function App() {
         <Route element={<AdminRoute />}>
           <Route element={<AdminLayout />}>
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/schools" element={<AdminSchools />} />
             <Route path="/admin/users" element={<AdminUsers />} />
             <Route path="/admin/books" element={<AdminBooks />} />
+            <Route path="/admin/questions" element={<AdminQuestions />} />
+            <Route path="/admin/question-sets" element={<AdminQuestionSets />} />
+            <Route path="/admin/assessments" element={<AdminAssessments />} />
             <Route path="/admin/ai-settings" element={<AdminAISettings />} />
             <Route path="/admin/notices" element={<AdminNotices />} />
             <Route path="/admin/chats" element={<AdminChats />} />
@@ -112,6 +134,33 @@ export default function App() {
             <Route path="/admin/prompt-templates" element={<AdminPromptTemplates />} />
             <Route path="/admin/logs" element={<AdminLogs />} />
             <Route path="/admin/system" element={<AdminSystem />} />
+          </Route>
+        </Route>
+
+        <Route element={<SchoolAdminRoute />}>
+          <Route element={<StaffLayout />}>
+            <Route path="/school" element={<SchoolDashboard />} />
+            <Route path="/school/members" element={<SchoolMembers />} />
+            <Route path="/school/questions" element={<SchoolQuestions />} />
+            <Route path="/school/assessments" element={<SchoolAssessments />} />
+          </Route>
+        </Route>
+
+        <Route element={<TeacherRoute />}>
+          <Route element={<StaffLayout />}>
+            <Route path="/teacher" element={<TeacherDashboard />} />
+            <Route path="/teacher/questions" element={<TeacherQuestions />} />
+            <Route path="/teacher/question-sets" element={<TeacherQuestionSets />} />
+            <Route path="/teacher/assessments" element={<TeacherAssessments />} />
+            <Route path="/teacher/submissions" element={<TeacherSubmissions />} />
+            <Route path="/teacher/materials" element={<TeacherMaterials />} />
+          </Route>
+        </Route>
+
+        <Route element={<StudentRoute />}>
+          <Route element={<StudentLayout />}>
+            <Route path="/student" element={<StudentHome />} />
+            <Route path="/student/quizzes/:assessmentId/take" element={<StudentQuiz />} />
           </Route>
         </Route>
 

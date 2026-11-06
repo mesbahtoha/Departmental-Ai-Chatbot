@@ -71,7 +71,8 @@ export const authController = {
   }),
 
   me: asyncHandler(async (req: Request, res: Response) => {
-    const user = await authService.getPrincipal(req.user!.id, req.user!.role);
+    const storageRole = req.user!.role === 'admin' || req.user!.role === 'superadmin' ? 'admin' : 'user';
+    const user = await authService.getPrincipal(req.user!.id, storageRole);
     if (!user) return fail(res, 404, 'User not found');
     ok(res, { user });
   }),

@@ -3,9 +3,10 @@ import { BookChunkModel } from '../database/models/BookChunk.model';
 import { IngestionJobModel } from '../database/models/IngestionJob.model';
 
 export const bookRepository = {
-  listPublished(filter: { subject?: string; grade?: string; curriculum?: string; search?: string }) {
+  listPublished(filter: { subject?: string; classLevel?: number; grade?: string; curriculum?: string; search?: string }) {
     const q: Record<string, unknown> = { publicationState: 'published' };
     if (filter.subject) q.subject = filter.subject;
+    if (filter.classLevel) q.classLevel = filter.classLevel;
     if (filter.grade) q.grade = filter.grade;
     if (filter.curriculum) q.curriculum = filter.curriculum;
     if (filter.search) q.title = { $regex: filter.search, $options: 'i' };

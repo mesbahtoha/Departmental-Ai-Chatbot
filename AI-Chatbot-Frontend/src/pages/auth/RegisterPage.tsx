@@ -6,8 +6,9 @@ import { MdVisibility, MdVisibilityOff } from 'react-icons/md';
 import { useAuthStore } from '@/store/auth.store';
 import { getErrorMessage } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
-import { Field, Input } from '@/components/ui/Form';
+import { Field, Input, Select } from '@/components/ui/Form';
 import { useLang } from '@/lib/i18n';
+import { CLASS_LEVELS } from '@/constants/academic';
 
 export function RegisterPage() {
   const register = useAuthStore((s) => s.register);
@@ -19,6 +20,8 @@ export function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [classLevel, setClassLevel] = useState<number | ''>('');
+  const [schoolCode, setSchoolCode] = useState('');
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -45,7 +48,7 @@ export function RegisterPage() {
     if (Object.keys(fe).length) return;
     setLoading(true);
     try {
-      const user = await register(name.trim(), email.trim(), password);
+      const user = await register(name.trim(), email.trim(), password, classLevel ? Number(classLevel) : undefined, schoolCode.trim() || undefined);
       toast.success(bn ? `স্বাগতম, ${user.name}!` : `Welcome, ${user.name}!`);
       const from = (location.state as { from?: string } | null)?.from;
       navigate(from ?? '/chat', { replace: true });
@@ -70,6 +73,17 @@ export function RegisterPage() {
           </Field>
           <Field label={bn ? 'ইমেইল' : 'Email'} error={fieldError.email}>
             <Input id="reg-email" type="email" required placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" aria-label="Email" />
+          </Field>
+          <Field label={bn ? 'তোমার শ্রেণি' : 'Your class'} hint={bn ? '১ থেকে ১০ শ্রেণির মধ্যে' : 'Select your class level'}>
+            <Select id="reg-class" value={classLevel === '' ? '' : String(classLevel)} onChange={(e) => setClassLevel(e.target.value ? Number(e.target.value) : '')} aria-label={bn ? 'শ্রেণি' : 'Class level'}>
+              <option value="">{bn ? 'শ্রেণি বেছে নাও (অপশনাল)' : 'Select class (optional)'}</option>
+              {CLASS_LEVELS.map((level) => (
+                <option key={level} value={level}>Class {level}</option>
+              ))}
+            </Select>
+          </Field>
+          <Field label={bn ? 'স্কুল জইন কোড (অপশনাল)' : 'School join code (optional)'} hint={bn ? 'তোমার স্কুল থেকে দেওয়া কোডটি লেখো' : 'Enter the code shared by your school'}>
+            <Input id="reg-school-code" placeholder="e.g. GAND1234" value={schoolCode} onChange={(e) => setSchoolCode(e.target.value.toUpperCase())} autoComplete="off" aria-label={bn ? 'স্কুল জইন কোড' : 'School join code'} />
           </Field>
           <Field label={bn ? 'পাসওয়ার্ড' : 'Password'} hint={bn ? 'কমপক্ষে ৮ অক্ষর' : 'At least 8 characters'} error={fieldError.password}>
             <div className="password-wrap">

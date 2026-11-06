@@ -42,12 +42,12 @@ export function LandingPage() {
 
   const features = bn ? [
     { icon: MdMenuBook, c: '#8B5CF6', t: 'Unit Lesson Page বোঝে', d: 'ছোট লেখা দিলেই exact অংশ খুঁজে সমাধান দেয়।' },
-    { icon: MdQuiz, c: '#0D9488', t: 'তৃতীয় শ্রেণির সহজ ভাষা', d: 'ছোট বাক্য, বাংলা অর্থ, শেষে ১টি প্রশ্ন।' },
+    { icon: MdQuiz, c: '#0D9488', t: 'সহজ শ্রেণি-অনুযায়ী ভাষা', d: 'ছোট বাক্য, বাংলা অর্থ, শেষে ১টি প্রশ্ন।' },
     { icon: MdStar, c: '#D97706', t: 'মিল খেলা আছে', d: 'Request এ ট্যাপ, reply তে ট্যাপ, তারা জেতো।' },
     { icon: MdGroups, c: '#7C3AED', t: 'নিরাপদ ও বইভিত্তিক', d: 'English For Today এর কাছাকাছি, ভুলে উৎসাহ।' },
   ] : [
     { icon: MdMenuBook, c: '#8B5CF6', t: 'Understands Unit Lesson Page', d: 'Short text finds the exact match and solves it.' },
-    { icon: MdQuiz, c: '#0D9488', t: 'Simple Class 3 words', d: 'Short sentences, Bangla meaning, 1 practice at end.' },
+    { icon: MdQuiz, c: '#0D9488', t: 'Class-friendly words', d: 'Short sentences, Bangla meaning, 1 practice at end.' },
     { icon: MdStar, c: '#D97706', t: 'Matching game included', d: 'Tap a request, tap a reply, earn stars.' },
     { icon: MdGroups, c: '#7C3AED', t: 'Safe and book based', d: 'Close to English For Today, kind on mistakes.' },
   ];
@@ -65,9 +65,9 @@ export function LandingPage() {
   ];
 
   const stats = bn ? [
-    { n: '3', l: 'শ্রেণি' }, { n: '4+', l: 'বিষয়' }, { n: '5', l: 'মিল সমাধান' }, { n: '24/7', l: 'পড়ার বন্ধু' },
+    { n: '10', l: 'শ্রেণি' }, { n: '4+', l: 'বিষয়' }, { n: '১০০%', l: 'NCTB' }, { n: '24/7', l: 'পড়ার বন্ধু' },
   ] : [
-    { n: '3', l: 'Class' }, { n: '4+', l: 'Subjects' }, { n: '5', l: 'Matches solved' }, { n: '24/7', l: 'Study buddy' },
+    { n: '10', l: 'Classes' }, { n: '4+', l: 'Subjects' }, { n: '100%', l: 'NCTB' }, { n: '24/7', l: 'Study buddy' },
   ];
 
   const quotes = bn ? [
@@ -146,7 +146,7 @@ export function LandingPage() {
       {/* 3. Features */}
       <section className="pg-container section" aria-labelledby="feat-t">
         <h2 id="feat-t" className="section-title">{bn ? 'ছোটদের জন্য তৈরি' : 'Made for little learners'}</h2>
-        <p className="section-sub">{bn ? 'তৃতীয় শ্রেণির বাড়ির কাজ হাসিমুখে শেষ করার সবকিছু।' : 'Everything a Class 3 child needs to finish homework with a smile.'}</p>
+        <p className="section-sub">{bn ? '১ থেকে ১০ শ্রেণির বাড়ির কাজ হাসিমুখে শেষ করার সবকিছু।' : 'Everything learners from Class 1 to Class 10 need to finish homework with a smile.'}</p>
         <div className="card-4">
           {features.map((f) => (
             <article key={f.t} className="pg-card hover-lift feat-card">

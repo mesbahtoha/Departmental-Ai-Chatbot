@@ -15,8 +15,8 @@ export function AboutPage() {
             <h1 style={{ fontSize: 30, marginBottom: 8 }}>{bn ? 'শিখি বন্ধু কী করে' : 'What Shikhi Bondhu does'}</h1>
             <p style={{ color: '#475569', margin: 0 }}>
               {bn
-                ? 'শিখি বন্ধু তৃতীয় শ্রেণির English For Today বইভিত্তিক পড়ার বন্ধু। Unit, Lesson আর Page নম্বর দিলে বইয়ের অংশ খুঁজে সহজ বাংলায় বুঝিয়ে দেয়। ছবি দরকার নেই, ছোট লেখাই যথেষ্ট।'
-                : 'Shikhi Bondhu is a Class 3 study friend built around English For Today. Give Unit, Lesson and Page number and it finds the book section and explains in easy Bangla. Short text is enough, no photo needed.'}
+                ? 'শিখি বন্ধু ১ থেকে ১০ শ্রেণির NCTB বইভিত্তিক পড়ার বন্ধু। Unit, Lesson আর Page নম্বর দিলে বইয়ের অংশ খুঁজে সহজ বাংলায় বুঝিয়ে দেয়। ছবি দরকার নেই, ছোট লেখাই যথেষ্ট।'
+                : 'Shikhi Bondhu is a Class 1-10 study friend built around NCTB books. Give Unit, Lesson and Page number and it finds the book section and explains in easy Bangla. Short text is enough, no photo needed.'}
             </p>
           </div>
         </div>

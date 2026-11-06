@@ -7,6 +7,7 @@ import mongoose, { Schema, InferSchemaType } from 'mongoose';
 const bookSchema = new Schema(
   {
     title: { type: String, required: true, trim: true },
+    classLevel: { type: Number, min: 1, max: 10, default: 3, index: true },
     grade: { type: String, default: 'Class 3', index: true },
     curriculum: { type: String, default: 'NCTB', index: true },
     subject: { type: String, required: true, index: true },

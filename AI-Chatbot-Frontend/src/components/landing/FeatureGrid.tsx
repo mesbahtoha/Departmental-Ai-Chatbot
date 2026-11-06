@@ -17,7 +17,7 @@ const FEATURES: Feature[] = [
   },
   {
     icon: FaBolt,
-    title: 'Simple words for Class 3',
+    title: 'Simple words for every class',
     description: 'Short sentences, Bangla meaning, and one small practice question at the end.',
     color: '#F472B6',
   },
@@ -43,7 +43,7 @@ export function FeatureGrid() {
           Made for little learners
         </h2>
         <p style={{ textAlign: 'center', color: '#64748B', marginBottom: 28 }}>
-          Everything a Class 3 child needs to finish English homework with a smile.
+          Everything a learner from Class 1 to Class 10 needs to finish homework with a smile.
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 18 }}>
           {FEATURES.map((feature) => (

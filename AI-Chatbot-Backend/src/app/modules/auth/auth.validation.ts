@@ -4,6 +4,8 @@ export const registerSchema = z.object({
   name: z.string().trim().min(2, 'Name must be at least 2 characters').max(80),
   email: z.string().trim().email('Invalid email address').max(120),
   password: z.string().min(6, 'Password must be at least 6 characters').max(72),
+  classLevel: z.coerce.number().int().min(1).max(10).optional(),
+  schoolCode: z.string().trim().max(20).optional(),
 });
 
 export const loginSchema = z.object({

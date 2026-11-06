@@ -6,6 +6,7 @@ const bookChunkSchema = new Schema(
     bookId: { type: Schema.Types.ObjectId, ref: 'Book', required: true, index: true },
     bookTitle: { type: String, default: '' },
     subject: { type: String, default: '', index: true },
+    classLevel: { type: Number, default: 3, index: true },
     grade: { type: String, default: 'Class 3' },
     curriculum: { type: String, default: 'NCTB' },
     language: { type: String, default: 'bn' },

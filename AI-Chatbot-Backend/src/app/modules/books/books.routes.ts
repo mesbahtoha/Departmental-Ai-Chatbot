@@ -13,13 +13,20 @@ const router = Router();
 router.get(
   '/',
   asyncHandler(async (req, res) => {
-    const { subject, grade, curriculum, search } = req.query as Record<string, string>;
-    const books = await bookRepository.listPublished({ subject, grade, curriculum, search });
+    const { subject, classLevel, grade, curriculum, search } = req.query as Record<string, string>;
+    const books = await bookRepository.listPublished({
+      subject,
+      classLevel: classLevel ? Number(classLevel) : undefined,
+      grade,
+      curriculum,
+      search,
+    });
     ok(res, {
       books: books.map((b) => ({
         _id: b._id,
         title: b.title,
         subject: b.subject,
+        classLevel: b.classLevel,
         grade: b.grade,
         curriculum: b.curriculum,
         language: b.language,
@@ -44,6 +51,7 @@ router.get(
         _id: book._id,
         title: book.title,
         subject: book.subject,
+        classLevel: book.classLevel,
         grade: book.grade,
         curriculum: book.curriculum,
         language: book.language,
@@ -67,7 +75,8 @@ router.get(
   '/meta/subjects',
   asyncHandler(async (_req, res) => {
     const subjects = await BookModel.distinct('subject', { publicationState: 'published' });
-    ok(res, { subjects });
+    const classes = await BookModel.distinct('classLevel', { publicationState: 'published' });
+    ok(res, { subjects, classes });
   })
 );
 

@@ -10,6 +10,7 @@ import {
 } from 'react-icons/md';
 import { useAuthStore, useQuota } from '@/store/auth.store';
 import { useChatStore } from '@/store/chat.store';
+import { NotificationBell } from '@/components/ui/NotificationBell';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
 import { formatTokens } from '@/lib/format';
@@ -232,6 +233,7 @@ export function AppShell() {
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <NotificationBell />
             <ThemeLangControls compact />
             <button
               className="btn btn-ghost btn-sm"

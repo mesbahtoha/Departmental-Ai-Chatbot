@@ -195,7 +195,7 @@ export function TutorPage() {
     <div className="pg-app" style={{ paddingBottom: 190 }}>
       <div className="pg-container" style={{ maxWidth: 780, paddingTop: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
-          <h1 style={{ fontSize: 26 }}>Shikhi Bondhu <span style={{ fontSize: 13, color: '#64748B', fontWeight: 500 }}>Class 3 English Friend</span></h1>
+          <h1 style={{ fontSize: 26 }}>Shikhi Bondhu <span style={{ fontSize: 13, color: '#64748B', fontWeight: 500 }}>Class 1-10 Study Friend</span></h1>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {!authed && <Link to="/welcome" className="pg-badge pg-badge-yellow" style={{ textDecoration: 'none' }}>Guest mode</Link>}
             {authed && <Link to="/chat" className="pg-badge pg-badge-mint" style={{ textDecoration: 'none' }}>Chat with history</Link>}

@@ -13,16 +13,24 @@ import {
   MdMemory,
   MdMenu,
   MdClose,
+  MdSchool,
+  MdChecklist,
+  MdQuiz,
 } from 'react-icons/md';
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/auth.store';
 import { ThemeLangControls } from '@/components/ui/ThemeLangControls';
 import { Avatar } from '@/components/ui/Avatar';
+import { NotificationBell } from '@/components/ui/NotificationBell';
 
 const NAV_ITEMS = [
   { to: '/admin', label: 'Dashboard', icon: MdDashboard, end: true },
+  { to: '/admin/schools', label: 'Schools', icon: MdSchool },
   { to: '/admin/users', label: 'Users', icon: MdPeople },
-  { to: '/admin/books', label: 'Books (Class 3)', icon: MdStickyNote2 },
+  { to: '/admin/books', label: 'Books', icon: MdStickyNote2 },
+  { to: '/admin/questions', label: 'Questions', icon: MdListAlt },
+  { to: '/admin/question-sets', label: 'Question Sets', icon: MdChecklist },
+  { to: '/admin/assessments', label: 'Assessments', icon: MdQuiz },
   { to: '/admin/ai-settings', label: 'AI Providers', icon: MdMemory },
   { to: '/admin/notices', label: 'Notices (legacy)', icon: MdStickyNote2 },
   { to: '/admin/chats', label: 'Chat History', icon: MdMessage },
@@ -164,7 +172,10 @@ export function AdminLayout() {
             </button>
             <span className="font-semibold" style={{ fontSize: 15 }}>Shikhi Admin</span>
           </div>
-          <ThemeLangControls compact />
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <ThemeLangControls compact />
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto admin-content route-fade">
           <Outlet />

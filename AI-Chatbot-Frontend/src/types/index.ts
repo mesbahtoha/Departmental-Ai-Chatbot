@@ -7,12 +7,24 @@ export interface ApiError {
   code?: string;
 }
 
+export type Role =
+  | 'superadmin'
+  | 'admin'
+  | 'school_admin'
+  | 'teacher'
+  | 'student'
+  | 'user';
+
 export interface AuthUser {
   id: string;
-  role: 'admin' | 'user';
+  role: Role;
   email: string;
   name: string;
   avatarUrl?: string | null;
+  schoolId?: string | null;
+  schoolName?: string | null;
+  schoolCode?: string | null;
+  classLevel?: number | null;
 }
 
 export interface AuthTokens {
@@ -23,6 +35,291 @@ export interface AuthTokens {
 export interface AuthResponse {
   user: AuthUser;
   tokens: AuthTokens;
+}
+
+// ---- Four-level RBAC helpers ----
+
+export function isPlatformRole(role?: string | null): boolean {
+  return role === 'superadmin' || role === 'admin';
+}
+
+export function isStaffRole(role?: string | null): boolean {
+  return isPlatformRole(role) || role === 'school_admin' || role === 'teacher';
+}
+
+export const CLASS_LEVELS: number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+export function classLabel(level?: number | null): string {
+  return level ? `Class ${level}` : 'All classes';
+}
+
+// ---- Academic / assessment domain types ----
+
+export interface QuestionOption {
+  key: string;
+  text?: string;
+  imageUrl?: string | null;
+}
+
+export interface QuestionPair {
+  left?: string;
+  right?: string;
+  imageUrl?: string | null;
+}
+
+export interface QuestionBlank {
+  index?: number;
+  answer?: string;
+  clue?: string;
+}
+
+export interface QuestionLabel {
+  label?: string;
+  answer?: string;
+  x?: number | null;
+  y?: number | null;
+}
+
+export type QuestionAnswerMode =
+  | 'options'
+  | 'text'
+  | 'pairs'
+  | 'blanks'
+  | 'table'
+  | 'labels';
+
+export interface QuestionTypeMeta {
+  key: string;
+  label: string;
+  shortLabel: string;
+  group: string;
+  answerMode: QuestionAnswerMode;
+  description: string;
+}
+
+export interface Question {
+  _id: string;
+  schoolId: string | null;
+  createdBy: string;
+  createdByRole: string;
+  classLevel: number;
+  subject: string;
+  chapter?: string;
+  topic?: string;
+  type: string;
+  prompt: string;
+  passage?: string;
+  instructions?: string;
+  mediaUrl?: string | null;
+  options?: QuestionOption[];
+  correctAnswers?: string[];
+  pairs?: QuestionPair[];
+  blanks?: QuestionBlank[];
+  labels?: QuestionLabel[];
+  tableData?: unknown;
+  answerText?: string;
+  explanation?: string;
+  marks: number;
+  difficulty: string;
+  tags?: string[];
+  isPublic: boolean;
+  status: string;
+  usageCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type QuestionInput = {
+  classLevel: number;
+  subject: string;
+  chapter?: string;
+  topic?: string;
+  type: string;
+  prompt: string;
+  passage?: string;
+  instructions?: string;
+  mediaUrl?: string | null;
+  options?: QuestionOption[];
+  correctAnswers?: string[];
+  pairs?: QuestionPair[];
+  blanks?: QuestionBlank[];
+  labels?: QuestionLabel[];
+  tableData?: unknown;
+  answerText?: string;
+  explanation?: string;
+  marks?: number;
+  difficulty?: string;
+  tags?: string[];
+  isPublic?: boolean;
+  status?: string;
+};
+
+export interface QuestionSet {
+  _id: string;
+  schoolId: string | null;
+  createdBy: string;
+  createdByRole: string;
+  name: string;
+  description?: string;
+  classLevel: number;
+  subject: string;
+  items: { question: string; marks?: number | null }[];
+  totalMarks: number;
+  questionCount: number;
+  visibility: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AssessmentItem {
+  marks: number;
+  question: Question;
+}
+
+export interface Assessment {
+  _id: string;
+  schoolId: string | null;
+  createdBy: string;
+  createdByRole: string;
+  createdByName: string;
+  type: 'quiz' | 'assignment' | 'exam';
+  title: string;
+  instructions: string;
+  classLevel: number;
+  subject: string;
+  questionCount: number;
+  totalMarks: number;
+  assignedStudentIds: string[];
+  startAt: string | null;
+  dueAt: string | null;
+  durationMinutes: number;
+  maxAttempts: number;
+  shuffleQuestions: boolean;
+  allowLateSubmission: boolean;
+  showResults: boolean;
+  status: 'draft' | 'published' | 'closed';
+  publishedAt: string | null;
+  submissionCount: number;
+  pendingGrading: number;
+  createdAt: string;
+  updatedAt: string;
+  items?: AssessmentItem[];
+}
+
+export interface StudentAssessment extends Assessment {
+  submission: {
+    _id: string;
+    status: string;
+    totalScore: number;
+    percentage: number;
+    needsGrading: boolean;
+  } | null;
+  overdue: boolean;
+  canSubmit: boolean;
+}
+
+export interface AssessmentSubmissionAnswer {
+  questionId: string;
+  answer: unknown;
+  awardedMarks: number | null;
+  isCorrect: boolean | null;
+  feedback: string;
+  prompt: string;
+  type: string;
+  marks: number;
+  correctAnswers?: string[];
+  answerText?: string;
+}
+
+export interface AssessmentSubmission {
+  _id: string;
+  assessmentId: string;
+  studentId: string;
+  status: string;
+  autoScore: number;
+  manualScore: number;
+  totalScore: number;
+  totalMarks: number;
+  percentage: number;
+  needsGrading: boolean;
+  feedback?: string;
+  submittedAt: string | null;
+  gradedAt: string | null;
+  answers: AssessmentSubmissionAnswer[];
+  assessment?: Assessment | null;
+}
+
+export interface SchoolSummary {
+  _id: string;
+  name: string;
+  type: string;
+  code: string;
+  email: string;
+  phone: string;
+  address: string;
+  district: string;
+  logoUrl: string | null;
+  website: string;
+  classLevels: number[];
+  plan: string;
+  planExpiresAt: string | null;
+  maxTeachers: number;
+  maxStudents: number;
+  isActive: boolean;
+  notes: string;
+  createdBy: string;
+  stats: {
+    teachers: number;
+    students: number;
+    questions: number;
+    assessments: number;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SchoolWorkspace {
+  school: SchoolSummary;
+  stats: {
+    teachers: number;
+    students: number;
+    questions: number;
+    assessments: number;
+    pendingGrading: number;
+  };
+}
+
+export interface SchoolMember {
+  _id: string;
+  name: string;
+  email: string;
+  role: 'teacher' | 'student' | 'school_admin' | 'user';
+  schoolId?: string | null;
+  classLevel?: number | null;
+  phone?: string;
+  designation?: string;
+  subjects?: string[];
+  assignedClasses?: number[];
+  studentRoll?: string;
+  guardianName?: string;
+  guardianPhone?: string;
+  isActive: boolean;
+  createdAt: string;
+  lastLoginAt?: string | null;
+  mustChangePassword?: boolean;
+}
+
+export interface NotificationItem {
+  _id: string;
+  type: string;
+  title: string;
+  message: string;
+  link: string;
+  schoolId: string | null;
+  meta: Record<string, unknown> | null;
+  readAt: string | null;
+  createdAt: string;
 }
 
 export interface QuotaWindow {
@@ -220,6 +517,7 @@ export interface BookInfo {
   grade: string;
   curriculum: string;
   language: string;
+  classLevel?: number;
   edition?: string;
   publisher?: string;
   chunkCount?: number;

@@ -1,12 +1,16 @@
 import { ObjectId } from 'mongodb';
+import type { Role } from '../constants';
 
 /** The authenticated principal attached to `req` by the auth middleware. */
 export interface AuthUser {
   id: string;
-  role: 'admin' | 'user';
+  role: Role;
   email: string;
   name: string;
   avatarUrl?: string | null;
+  schoolId?: string | null;
+  schoolName?: string | null;
+  classLevel?: number | null;
 }
 
 /** Express Request augmentation. */
@@ -16,7 +20,7 @@ declare global {
     interface Request {
       user?: AuthUser;
       userId?: string;
-      userRole?: 'admin' | 'user';
+      userRole?: Role;
       requestId?: string;
     }
   }

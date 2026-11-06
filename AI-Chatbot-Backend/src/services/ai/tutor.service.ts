@@ -24,6 +24,7 @@ export const TutorChatSchema = z.object({
   language: z.enum(['bn', 'en', 'auto']).optional(),
   mode: z.enum(['fast', 'balanced', 'accurate']).optional(),
   attachments: z.array(attachmentSchema).max(5).optional(),
+  classLevel: z.coerce.number().int().min(1).max(10).optional(),
   bookId: z.string().optional(),
   subject: z.string().optional(),
   grade: z.string().optional(),
@@ -175,7 +176,8 @@ export const tutorService = {
     const filter: BookFilter = {};
     if (input.bookId) filter.bookId = input.bookId;
     if (input.subject) filter.subject = input.subject;
-    if (input.grade) filter.grade = input.grade;
+    if (input.classLevel) filter.grade = `Class ${input.classLevel}`;
+    else if (input.grade) filter.grade = input.grade;
     if (input.curriculum) filter.curriculum = input.curriculum;
 
     // Retrieval also considers text extracted from an attached PDF so the
@@ -184,12 +186,20 @@ export const tutorService = {
     const chunks: RetrievedBookChunk[] = await retrieveBookChunks(retrievalQuery, filter, 6);
     const sufficient = retrievalSufficient(chunks);
 
+    const scopeLabel = [
+      input.subject ? `Subject: ${input.subject}` : '',
+      input.classLevel ? `Class ${input.classLevel}` : '',
+    ]
+      .filter(Boolean)
+      .join(', ');
+
     const messages = buildTutorMessages({
       question,
       answerLanguage,
       chunks,
       history,
-      bookFilterLabel: input.subject ? `Subject: ${input.subject}` : undefined,
+      classLevel: input.classLevel,
+      bookFilterLabel: scopeLabel ? `${scopeLabel}.` : undefined,
       attachmentsText: attachmentBlocks.join('\n\n') || undefined,
       hasImage: imageParts.length > 0,
     });
@@ -306,7 +316,8 @@ export const tutorService = {
     const filter: BookFilter = {};
     if (input.bookId) filter.bookId = input.bookId;
     if (input.subject) filter.subject = input.subject;
-    if (input.grade) filter.grade = input.grade;
+    if (input.classLevel) filter.grade = `Class ${input.classLevel}`;
+    else if (input.grade) filter.grade = input.grade;
     if (input.curriculum) filter.curriculum = input.curriculum;
 
     const chunks = await retrieveBookChunks(topic, filter, 4);

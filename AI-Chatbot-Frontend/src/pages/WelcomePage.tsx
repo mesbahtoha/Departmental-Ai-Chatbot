@@ -20,7 +20,7 @@ export function WelcomePage() {
           <div style={{ fontSize: 52 }} aria-hidden="true">Open book</div>
           <h1 style={{ fontSize: 30, margin: '12px 0 8px' }}>Welcome to Shikhi Bondhu</h1>
           <p style={{ color: '#64748B', marginBottom: 24 }}>
-            Learn easy lessons from your Class 3 book, with pictures and fun.
+            Learn easy lessons from your NCTB books (Class 1-10), with pictures and fun.
             {user ? ` (You are logged in as ${user.name})` : ' Log in or try as a guest.'}
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

@@ -2,12 +2,45 @@
  * Domain constants shared across the backend.
  */
 
+/**
+ * Four-level RBAC.
+ * - superadmin/admin : platform owner (admin collection)
+ * - school_admin     : manages one school or coaching centre
+ * - teacher          : creates questions, sets, assessments and materials
+ * - student          : takes assessments, uses the AI tutor
+ * - user             : legacy name kept for existing student accounts
+ */
 export const ROLES = {
+  SUPER_ADMIN: 'superadmin',
   ADMIN: 'admin',
+  SCHOOL_ADMIN: 'school_admin',
+  TEACHER: 'teacher',
+  STUDENT: 'student',
   USER: 'user',
 } as const;
 
 export type Role = (typeof ROLES)[keyof typeof ROLES];
+
+/** Roles that own the platform (admin collection). */
+export const PLATFORM_ROLES: Role[] = ['superadmin', 'admin'];
+/** Roles that can manage academic content. */
+export const STAFF_ROLES: Role[] = ['superadmin', 'admin', 'school_admin', 'teacher'];
+
+export function isPlatformRole(role?: string | null): boolean {
+  return role === 'superadmin' || role === 'admin';
+}
+
+export function isStaffRole(role?: string | null): boolean {
+  return isPlatformRole(role) || role === 'school_admin' || role === 'teacher';
+}
+
+/** Classes supported by the platform. */
+export const CLASS_LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
+export type ClassLevel = (typeof CLASS_LEVELS)[number];
+
+export function classLabel(level?: number | null): string {
+  return level ? `Class ${level}` : 'All classes';
+}
 
 export const NOTICE_CATEGORIES = [
   'general',

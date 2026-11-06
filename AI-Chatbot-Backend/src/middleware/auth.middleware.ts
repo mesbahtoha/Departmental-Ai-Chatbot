@@ -2,6 +2,8 @@ import { NextFunction, Request, Response } from 'express';
 import { verifyAccessToken } from '../utils/token.utils';
 import { UserModel } from '../database/models/User.model';
 import { AdminModel } from '../database/models/Admin.model';
+import { SchoolModel } from '../database/models/School.model';
+import type { Role } from '../constants';
 
 /**
  * JWT authentication middleware.
@@ -23,27 +25,35 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
   }
 
   if (payload.role === 'admin') {
-    const admin = await AdminModel.findById(payload.sub).select('+passwordHash').lean();
+    const admin = await AdminModel.findById(payload.sub).lean();
     if (!admin || !admin.isActive) {
       return res.status(401).json({ success: false, message: 'Account is disabled or removed' });
     }
     req.user = {
       id: String(admin._id),
-      role: 'admin',
+      role: (admin.role || 'admin') as Role,
       email: admin.email,
       name: admin.name,
+      avatarUrl: null,
+      schoolId: null,
+      schoolName: null,
+      classLevel: null,
     };
   } else {
     const user = await UserModel.findById(payload.sub).lean();
     if (!user || !user.isActive) {
       return res.status(401).json({ success: false, message: 'Account is disabled or removed' });
     }
+    const school = user.schoolId ? await SchoolModel.findById(user.schoolId).select('name').lean() : null;
     req.user = {
       id: String(user._id),
-      role: user.role === 'admin' ? 'admin' : 'user',
+      role: (user.role === 'admin' ? 'admin' : user.role) as Role,
       email: user.email,
       name: user.name,
       avatarUrl: user.avatarUrl || null,
+      schoolId: user.schoolId ? String(user.schoolId) : null,
+      schoolName: school?.name ?? null,
+      classLevel: user.classLevel ?? null,
     };
   }
 
@@ -67,17 +77,24 @@ export async function optionalAuthenticate(req: Request, res: Response, next: Ne
       if (payload.role === 'admin') {
         const admin = await AdminModel.findById(payload.sub).lean();
         if (admin?.isActive) {
-          req.user = { id: String(admin._id), role: 'admin', email: admin.email, name: admin.name };
+          req.user = {
+            id: String(admin._id),
+            role: (admin.role || 'admin') as Role,
+            email: admin.email,
+            name: admin.name,
+          };
         }
       } else {
         const user = await UserModel.findById(payload.sub).lean();
         if (user?.isActive) {
           req.user = {
             id: String(user._id),
-            role: 'user',
+            role: (user.role === 'admin' ? 'admin' : user.role) as Role,
             email: user.email,
             name: user.name,
             avatarUrl: user.avatarUrl || null,
+            schoolId: user.schoolId ? String(user.schoolId) : null,
+            classLevel: user.classLevel ?? null,
           };
         }
       }

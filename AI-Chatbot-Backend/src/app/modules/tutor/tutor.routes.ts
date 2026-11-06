@@ -36,6 +36,7 @@ export const tutorFeedbackLimiter = rateLimit({
 const guestChatSchema = z.object({
   message: z.string().min(1).max(2000),
   language: z.enum(['bn', 'en', 'auto']).optional(),
+  classLevel: z.coerce.number().int().min(1).max(10).optional(),
   subject: z.string().max(100).optional(),
   bookId: z.string().max(50).optional(),
 });
@@ -65,6 +66,7 @@ router.post(
       {
         message: req.body.message,
         language: req.body.language,
+        classLevel: req.body.classLevel,
         subject: req.body.subject,
         bookId: req.body.bookId,
       },
@@ -86,6 +88,7 @@ router.post(
       language: req.body.language,
       mode: req.body.mode,
       attachments: req.body.attachments,
+      classLevel: req.body.classLevel ?? req.user!.classLevel ?? undefined,
       subject: req.body.subject,
       bookId: req.body.bookId,
     };
@@ -123,6 +126,7 @@ router.post(
     const input = {
       message: req.body.message,
       language: req.body.language,
+      classLevel: req.body.classLevel ?? req.user!.classLevel ?? undefined,
       subject: req.body.subject,
       bookId: req.body.bookId,
     };

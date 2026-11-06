@@ -21,7 +21,18 @@ export const userRepository = {
     name: string;
     email: string;
     passwordHash: string;
-    role?: 'user' | 'admin';
+    role?: 'user' | 'student' | 'teacher' | 'school_admin' | 'admin';
+    schoolId?: Types.ObjectId | string | null;
+    classLevel?: number | null;
+    phone?: string;
+    designation?: string;
+    subjects?: string[];
+    assignedClasses?: number[];
+    studentRoll?: string;
+    guardianName?: string;
+    guardianPhone?: string;
+    mustChangePassword?: boolean;
+    createdBy?: Types.ObjectId | string | null;
   }): Promise<UserDocument> {
     return UserModel.create(data);
   },
@@ -29,7 +40,25 @@ export const userRepository = {
   async update(
     id: string | Types.ObjectId,
     data: Partial<
-      Pick<UserDocument, 'name' | 'avatarUrl' | 'isActive' | 'role' | 'lastLoginAt' | 'email'>
+      Pick<
+        UserDocument,
+        | 'name'
+        | 'avatarUrl'
+        | 'isActive'
+        | 'role'
+        | 'lastLoginAt'
+        | 'email'
+        | 'schoolId'
+        | 'classLevel'
+        | 'phone'
+        | 'designation'
+        | 'subjects'
+        | 'assignedClasses'
+        | 'studentRoll'
+        | 'guardianName'
+        | 'guardianPhone'
+        | 'mustChangePassword'
+      >
     >
   ): Promise<UserDocument | null> {
     return UserModel.findByIdAndUpdate(id, { $set: data }, { new: true });
